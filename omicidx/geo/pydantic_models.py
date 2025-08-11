@@ -38,8 +38,8 @@ class GEOPlatform(GEOBase):
     contact: Optional[GEOContact] = None
     summary: Optional[str] = None
     organism: Optional[str] = None
-    sample_id: Optional[List[str]] #List[constr(regex="GSM[0-9]+")] = []
-    series_id: Optional[List[str]] #List[constr(regex="GSE[0-9]+")] = []
+    sample_id: Optional[List[str]]=[] #List[constr(regex="GSM[0-9]+")] = []
+    series_id: Optional[List[str]]=[] #List[constr(regex="GSE[0-9]+")] = []
     technology: Optional[str] = None
     description: Optional[str] = None
     distribution: Optional[str] = None
