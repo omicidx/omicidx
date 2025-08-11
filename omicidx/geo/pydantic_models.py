@@ -1,8 +1,6 @@
-import pydantic
-from pydantic import BaseModel, constr
-import json
-from datetime import datetime, date
-from typing import List, Dict, Any, Optional
+from pydantic import BaseModel, Field
+from datetime import date
+from typing import List, Optional, Annotated
 
 
 
@@ -21,7 +19,7 @@ class GEOName(BaseModel):
 
 class GEOContact(BaseModel):
     city: Optional[str] = None
-    name: GEOName = None
+    name: Optional[GEOName] = None
     email: Optional[str] = None
     state: Optional[str] = None
     address: Optional[str] = None
@@ -37,7 +35,7 @@ class GEOPlatform(GEOBase):
     accession: str #constr(regex="GPL[0-9]+")
     status: str
     _entity: str = "GPL"
-    contact: GEOContact = None
+    contact: Optional[GEOContact] = None
     summary: Optional[str] = None
     organism: Optional[str] = None
     sample_id: Optional[List[str]] #List[constr(regex="GSM[0-9]+")] = []
@@ -74,20 +72,20 @@ class GEOSample(GEOBase):
     type: str
     anchor: Optional[str] = None
     _entity: None
-    contact: GEOContact = None
+    contact: Optional[GEOContact] = None
     description: Optional[str] = None
-    accession: constr(regex="GSM[0-9]+")
-    biosample: Optional[constr(regex="SAM[A-Z]+[0-9]+")] = None
-    tag_count: int = None
-    tag_length: float = None
-    platform_id: constr(regex="GPL[0-9]+")
+    accession: Annotated[str, Field(pattern=r"GSM[0-9]+")]
+    biosample: Optional[Annotated[str, Field(pattern=r"SAM[A-Z]+[0-9]+")]] = None
+    tag_count: Optional[int] = None
+    tag_length: Optional[float] = None
+    platform_id: Annotated[str, Field(pattern=r"GPL[0-9]+")]
     hyb_protocol: Optional[str] = None
     channel_count: int = 0
     scan_protocol: Optional[str] = None
     data_row_count: int = 0
     library_source: Optional[str] = None
     overall_design: Optional[str] = None
-    sra_experiment: Optional[constr(regex="[DES]RX[0-9]+")] = None
+    sra_experiment: Optional[Annotated[str, Field(pattern=r"[DES]RX[0-9]+")]] = None
     data_processing: Optional[str] = None
     supplemental_files: List[str] = []
     channels: List[GEOChannel] = []
@@ -95,20 +93,20 @@ class GEOSample(GEOBase):
 
 
 class GEOSeries(GEOBase):
-    accession: constr(regex="GSE[0-9]+")
-    subseries: List[constr(regex="GSE[0-9]+")] = []
-    bioprojects: List[constr(regex="PRJ[A-Z]+[0-9]+")] = []
-    sra_studies: List[constr(regex="[ESD]RP[0-9]+")] = []
+    accession: Annotated[str, Field(pattern=r"GSE[0-9]+")]
+    subseries: List[Annotated[str, Field(pattern=r"GSE[0-9]+")]] = []
+    bioprojects: List[Annotated[str, Field(pattern=r"PRJ[A-Z]+[0-9]+")]] = []
+    sra_studies: List[Annotated[str, Field(pattern=r"[ESD]RP[0-9]+")]] = []
     _entity: str = "GSE"
-    contact: GEOContact = None
+    contact: Optional[GEOContact] = None
     type: List[str] = []
     summary: Optional[str] = None
     relation: List[str] = []
     pubmed_id: List[int] = []
-    sample_id: List[constr(regex="GSM[0-9]+")] = []
+    sample_id: List[Annotated[str, Field(pattern=r"GSM[0-9]+")]] = []
     sample_taxid: List[int] = []
     sample_organism: List[str] = []
-    platform_id: List[constr(regex="GPL[0-9]+")] = []
+    platform_id: List[Annotated[str, Field(pattern=r"GPL[0-9]+")]] = []
     platform_taxid: List[int] = []
     platform_organism: List[str] = []
     data_processing: Optional[str] = None
