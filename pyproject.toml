@@ -4,7 +4,7 @@ to = {format = "setuppy", path = "setup.py"}
 
 [tool.poetry]
 name = "omicidx"
-version = "1.13.0"
+version = "1.16.0"
 readme = "README.md"
 description = """The OmicIDX project collects, reprocesses, and then republishes metadata from multiple public genomics repositories. Included are the NCBI SRA, Biosample, and GEO databases. Publication is via the cloud data warehouse platform Bigquery, a set of performant search and retrieval APIs, and a set of json-format files for easy incorporation into other projects."""
 authors = ["Sean Davis <seandavi@gmail.com>"]
@@ -13,30 +13,28 @@ repository = "https://github.com/omicidx/omicidx-parsers"
 keywords = ["genomics", "bioinformatics", "open data", "API"]
 
 [tool.poetry.dependencies]
-python = ">=3.8"
+python = ">=3.9"
 requests = "^2.22"
 Click = "*"
 aiohttp = "^3.6.2"
 tenacity = "^8.0.1"
 pendulum = "*"
 httpx = "*"
-trio = "^0.22.0"
 pydantic = "^2"
 biopython = "^1.81"
 pronto = "^2.5.4"
 orjson = "^3.9.2"
 pytest = "^7.4.0"
 universal-pathlib = "*"
+trio = "^0.30.0"
 
 [tool.poetry.dev-dependencies]
 rope = "^0.14.0"
 yapf = "^0.28.0"
 pydoc-markdown = "^2.0"
-sphinx = "^5.1.0"
 ipython = "^8.0.1"
 black = "^22.6.0"
 sphinx-click = "^4.3.0"
-sphinx-material = {git = "https://github.com/bashtage/sphinx-material", rev = "main"}
 sphinx-autodoc-typehints = "^1.19.2"
 
 [tool.poetry.scripts]
