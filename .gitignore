@@ -32,3 +32,4 @@ alembic/
 .venv
 .env
 .vscode/settings.json
+*.whl
