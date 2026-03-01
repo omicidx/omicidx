@@ -1,0 +1,15 @@
+# DuckDB files (generated, not checked in)
+*.duckdb
+*.duckdb.wal
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# OS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
