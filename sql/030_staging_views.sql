@@ -153,3 +153,43 @@ SELECT * FROM src_biosamples;
 
 CREATE OR REPLACE VIEW stg_bioprojects AS
 SELECT * FROM src_bioprojects;
+
+-----
+-- PubMed Staging Views
+-----
+
+CREATE OR REPLACE VIEW stg_pubmed_articles AS
+SELECT
+    pmid,
+    title,
+    abstract,
+    journal,
+    medline_ta,
+    country,
+    issn_linking,
+    nlm_unique_id,
+    pubdate,
+    date_completed,
+    date_revised,
+    doi,
+    pmc,
+    issue,
+    pages,
+    languages,
+    vernacular_title,
+    authors,
+    mesh_terms,
+    publication_types,
+    chemical_list,
+    keywords,
+    references,
+    grant_ids
+FROM (
+    SELECT *,
+        ROW_NUMBER() OVER (
+            PARTITION BY pmid
+            ORDER BY _inserted_at DESC
+        ) as rn
+    FROM src_pubmed_articles
+)
+WHERE rn = 1;

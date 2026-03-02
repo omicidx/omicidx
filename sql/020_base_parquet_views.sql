@@ -70,5 +70,16 @@ create or replace view src_bioprojects as (
     from read_parquet('https://data-omicidx.cancerdatasci.org/bioproject/parquet/bioprojects.parquet')
 );
 
+-----
+--
+-- PubMed Views
+--
+-----
+
+create or replace view src_pubmed_articles as (
+    select *
+    from read_parquet('https://data-omicidx.cancerdatasci.org/pubmed/parquet/pubmed_articles.parquet')
+);
+
 -- End of base parquet views
 
