@@ -28,7 +28,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: uv sync
+        run: uv sync --no-install-project
 
       - name: Build DuckDB
         run: uv run build_db.py --upload
