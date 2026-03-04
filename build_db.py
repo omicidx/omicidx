@@ -60,6 +60,7 @@ def get_table_summaries(con: duckdb.DuckDBPyConnection) -> list[dict]:
     """Get row counts for all tables and views."""
     summaries = []
 
+    print("Performing table summaries")
     for schema in ["main", "geometadb", "sradb"]:
         try:
             tables = con.execute(
@@ -69,13 +70,16 @@ def get_table_summaries(con: duckdb.DuckDBPyConnection) -> list[dict]:
             continue
 
         for (table,) in tables:
+
             qualified = f"{schema}.{table}" if schema != "main" else table
+            print(f"    Table summary for {qualified}")
             try:
                 count = con.execute(f"SELECT COUNT(*) FROM {qualified}").fetchone()[0]
             except Exception:
                 count = -1
             summaries.append({"schema": schema, "table": table, "row_count": count})
-
+    
+    print("All table summaries complete")
     return summaries
 
 
