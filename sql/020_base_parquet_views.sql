@@ -9,7 +9,7 @@ create or replace view src_geo_samples as (
 );
 
 create or replace view src_geo_series_with_rnaseq_counts as (
-    select json_extract_string(accession,'accession') as accession
+    select accession
     from read_parquet('https://data-omicidx.cancerdatasci.org/geo/parquet/geo_series_with_rnaseq_counts.parquet')
 );
 

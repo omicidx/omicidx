@@ -64,7 +64,6 @@ SELECT
     contact."name"."last" AS contact_last_name,
     contact."name"."first" || ' ' || contact."name"."last" AS contact,
     supplemental_files,
-    data_processing,
 
     -- Indicates if the GEO Series has associated ncbi-supplied RNA-Seq data
     CASE WHEN h.accession IS NOT NULL THEN TRUE ELSE FALSE END AS has_geo_computed_rnaseq
@@ -88,8 +87,7 @@ create or replace view gpl as (
     description,
     'https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=' || accession AS web_link,
     contact."name"."first" || ' ' || contact."name"."last" AS contact,
-    data_row_count,
-    summary
+    data_row_count
 FROM src_geo_platforms
 );
 

@@ -134,7 +134,7 @@ SELECT
     NULL AS broker_name,
     NULL AS instrument_name,
     NULL AS run_date,
-    CAST(files AS VARCHAR) AS run_file,
+    NULL AS run_file,
     NULL AS run_center,
     NULL AS total_data_blocks,
     experiment_accession,
