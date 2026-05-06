@@ -1,16 +1,15 @@
-import shutil
-import zipfile
-import httpx
-import pathlib
-import tempfile
-import polars as pl
 import gzip
-from typing import Optional
+import pathlib
+import shutil
+import tempfile
+import zipfile
 from datetime import datetime
-import click
-from upath import UPath
 
+import click
+import httpx
+import polars as pl
 from omicidx.etl.log import get_logger
+from upath import UPath
 
 logger = get_logger(__name__)
 
@@ -23,7 +22,7 @@ TEMP_FILE_NAME = "nih_reporter_download.tmp"
 # Entity configuration
 ENTITIES = [
     "clinicalstudies",
-    "patents", 
+    "patents",
     "publications",
     "abstracts",
     "projects",
@@ -52,23 +51,23 @@ def is_full_dataset_entity(entity: str) -> bool:
     return entity in FULL_DATASET_ENTITIES
 
 
-def get_entity_years(entity: str) -> Optional[range]:
+def get_entity_years(entity: str) -> range | None:
     """Get the year range for an entity, or None if it's a full dataset entity.
-    
+
     Uses current year as the end year to automatically include new data.
     """
     if entity in FULL_DATASET_ENTITIES:
         return None
-    
+
     start_year = ENTITY_START_YEARS.get(entity)
     if start_year is None:
         logger.warning(f"No start year defined for entity: {entity}")
         return None
-    
+
     current_year = get_current_year()
     # Include current year + 1 to account for potential data availability
     end_year = current_year + 1
-    
+
     return range(start_year, end_year)
 
 
@@ -77,7 +76,7 @@ def show_entity_configuration():
     current_year = get_current_year()
     logger.info(f"NIH Reporter Entity Configuration (Current Year: {current_year})")
     logger.info("=" * 60)
-    
+
     for entity in ENTITIES:
         if is_full_dataset_entity(entity):
             logger.info(f"{entity}: Full dataset (no yearly breakdown)")
@@ -93,7 +92,7 @@ def show_entity_configuration():
     logger.info("=" * 60)
 
 
-def exporter_url_by_entity_and_year(entity: str, year: Optional[int] = None) -> str:
+def exporter_url_by_entity_and_year(entity: str, year: int | None = None) -> str:
     """Get the URL for a given entity and year.
 
     If year is None, get the URL for the full dataset.
@@ -104,7 +103,7 @@ def exporter_url_by_entity_and_year(entity: str, year: Optional[int] = None) -> 
         return f"https://reporter.nih.gov/exporter/{entity}/download/{year}"
 
 
-def get_basename_for_entity(entity: str, year: Optional[int] = None) -> str:
+def get_basename_for_entity(entity: str, year: int | None = None) -> str:
     """Get the base for a filename for a given entity and year."""
     if year is None:
         return f"nih_reporter_{entity}"
@@ -124,10 +123,9 @@ def fix_encoding(pathlib_path: pathlib.Path) -> pathlib.Path:
     """Fix encoding of a given csv file."""
     logger.info(f"Fixing encoding for {pathlib_path}")
     tmppath = pathlib.Path(pathlib_path.parent / f"{pathlib_path.name}.tmp")
-    with open(tmppath, "wb") as tmp:
-        with open(pathlib_path, "rb") as f:
-            for line in f:
-                tmp.write(line.decode("utf-8", errors="ignore").encode("utf-8"))
+    with open(tmppath, "wb") as tmp, open(pathlib_path, "rb") as f:
+        for line in f:
+            tmp.write(line.decode("utf-8", errors="ignore").encode("utf-8"))
     shutil.copyfile(tmppath, pathlib_path)
     logger.info(f"Done fixing encoding for {pathlib_path}")
     # Remove the temporary file
@@ -141,16 +139,18 @@ def extract_zipfile(zfile: pathlib.Path) -> pathlib.Path:
     try:
         with zipfile.ZipFile(zfile, "r") as zip_ref:
             zip_ref.extractall(zfile.parent)
-        
+
         # Find the extracted CSV file
         csv_files = list(zfile.parent.glob("*.csv"))
         if len(csv_files) != 1:
-            raise ValueError(f"Expected exactly 1 CSV file, found {len(csv_files)}: {csv_files}")
-        
+            raise ValueError(
+                f"Expected exactly 1 CSV file, found {len(csv_files)}: {csv_files}"
+            )
+
         csv_file = csv_files[0]
         logger.info(f"Extracted CSV file: {csv_file}")
         return csv_file
-        
+
     except Exception as e:
         logger.error(f"Failed to extract {zfile}: {e}")
         raise
@@ -161,20 +161,19 @@ def csv_to_jsonl(csv_file: pathlib.Path, output_file: pathlib.Path) -> None:
     logger.info(f"Converting {csv_file} to {output_file}")
     try:
         df = pl.read_csv(csv_file, infer_schema_length=100000)
-        
+
         # Write to a temporary file first, then compress
-        temp_jsonl = output_file.with_suffix('.jsonl')
+        temp_jsonl = output_file.with_suffix(".jsonl")
         df.write_ndjson(temp_jsonl)
-        
+
         # Compress the JSONL file
-        with open(temp_jsonl, 'rb') as f_in:
-            with gzip.open(output_file, 'wb') as f_out:
-                shutil.copyfileobj(f_in, f_out)
-        
+        with open(temp_jsonl, "rb") as f_in, gzip.open(output_file, "wb") as f_out:
+            shutil.copyfileobj(f_in, f_out)
+
         # Remove temporary file
         temp_jsonl.unlink()
         logger.info(f"Successfully converted to {output_file}")
-        
+
     except Exception as e:
         logger.error(f"Failed to convert {csv_file} to JSONL: {e}")
         raise
@@ -182,14 +181,16 @@ def csv_to_jsonl(csv_file: pathlib.Path, output_file: pathlib.Path) -> None:
 
 def download_file(url: str, output_path: pathlib.Path) -> None:
     """Download a file from URL to output path.
-    
+
     Raises:
         httpx.HTTPStatusError: If the server returns an error status
         Exception: For other download failures
     """
     logger.info(f"Downloading {url}")
     try:
-        with httpx.stream("GET", url, follow_redirects=True, timeout=DEFAULT_TIMEOUT) as response:
+        with httpx.stream(
+            "GET", url, follow_redirects=True, timeout=DEFAULT_TIMEOUT
+        ) as response:
             response.raise_for_status()
             with open(output_path, "wb") as f:
                 for chunk in response.iter_bytes(chunk_size=CHUNK_SIZE):
@@ -210,20 +211,21 @@ def download_file(url: str, output_path: pathlib.Path) -> None:
 
 class DataNotAvailableError(Exception):
     """Raised when data for a specific year/entity is not available."""
+
     pass
 
 
 def download_and_extract(
-    tempdir: pathlib.Path, entity: str, year: Optional[int] = None
+    tempdir: pathlib.Path, entity: str, year: int | None = None
 ) -> pathlib.Path:
     """Download and extract a given entity and year."""
     url = exporter_url_by_entity_and_year(entity, year)
     file_basename = get_basename_for_entity(entity, year)
-    
+
     # Download to temporary file
     tmp_path = tempdir / TEMP_FILE_NAME
     download_file(url, tmp_path)
-    
+
     try:
         # Process based on entity type
         if is_full_dataset_entity(entity):
@@ -234,16 +236,16 @@ def download_and_extract(
             # These entities provide ZIP files
             csv_file = extract_zipfile(tmp_path)
             tmp_path.unlink(missing_ok=True)
-        
+
         # Fix encoding issues
         csv_file = fix_encoding(csv_file)
-        
+
         # Convert to compressed JSONL (create in temp directory)
         output_file = tempdir / (file_basename + ".jsonl.gz")
         csv_to_jsonl(csv_file, output_file)
-        
+
         return output_file
-        
+
     except Exception as e:
         logger.error(f"Failed to process {entity} {year}: {e}")
         tmp_path.unlink(missing_ok=True)
@@ -254,13 +256,13 @@ def process_entity(entity: str, output_dir: pathlib.Path = DEFAULT_OUTPUT_DIR):
     """Process a single entity - download and convert to JSONL."""
     logger.info(f"Processing {entity}")
     output_dir.mkdir(exist_ok=True, parents=True)
-    
+
     if is_full_dataset_entity(entity):
         # Download full dataset
         with tempfile.TemporaryDirectory() as tempdir:
             tempdir = pathlib.Path(tempdir)
             jsonl_file = download_and_extract(tempdir, entity)
-            
+
             # Move to final location
             final_path = output_dir / jsonl_file.name
             shutil.move(jsonl_file, final_path)
@@ -271,7 +273,7 @@ def process_entity(entity: str, output_dir: pathlib.Path = DEFAULT_OUTPUT_DIR):
         if entity_years is None:
             logger.warning(f"No year range defined for {entity}")
             return
-            
+
         for year in entity_years:
             try:
                 # Use a separate temp directory for each year to avoid conflicts
@@ -279,14 +281,16 @@ def process_entity(entity: str, output_dir: pathlib.Path = DEFAULT_OUTPUT_DIR):
                     year_tempdir = pathlib.Path(year_tempdir)
                     logger.info(f"Processing {entity} {year}")
                     jsonl_file = download_and_extract(year_tempdir, entity, year)
-                    
+
                     # Move to final location
                     final_path = output_dir / jsonl_file.name
                     shutil.move(jsonl_file, final_path)
                     logger.info(f"Completed {entity} {year} -> {final_path}")
-                    
+
             except DataNotAvailableError:
-                logger.info(f"Data not available for {entity} {year} - skipping (this is normal for recent years)")
+                logger.info(
+                    f"Data not available for {entity} {year} - skipping (this is normal for recent years)"
+                )
                 continue
             except Exception as e:
                 logger.error(f"Failed to process {entity} {year}: {e}")
@@ -297,14 +301,14 @@ def process_all_entities(output_dir: pathlib.Path = DEFAULT_OUTPUT_DIR):
     """Process all NIH Reporter entities."""
     logger.info("Starting NIH Reporter data processing")
     show_entity_configuration()
-    
+
     for entity in ENTITIES:
         try:
             process_entity(entity, output_dir)
         except Exception as e:
             logger.error(f"Failed to process entity {entity}: {e}")
             continue
-    
+
     logger.info("Completed NIH Reporter data processing")
 
 
@@ -313,11 +317,13 @@ def nih_reporter():
     """NIH Reporter ETL commands."""
     pass
 
+
 @nih_reporter.command()
-@click.argument('output_base', required=False, default=None)
+@click.argument("output_base", required=False, default=None)
 def extract(output_base: str | None):
     """Extract data from NIH Reporter."""
     from omicidx.etl.config import settings
+
     base = UPath(output_base) if output_base else settings.publish_directory
     output_dir = base / "nih_reporter" / "raw"
     process_all_entities(output_dir)

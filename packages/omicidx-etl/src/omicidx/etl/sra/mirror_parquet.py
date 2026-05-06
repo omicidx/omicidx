@@ -4,20 +4,20 @@ Parquet processing for SRA mirror entries.
 This module provides functions to download, parse, and write SRA mirror entries
 as parquet files in bounded-memory chunks.
 """
+
 from __future__ import annotations
 
 import gzip
 import shutil
 import tempfile
-from typing import Callable, Iterable, Optional
+from collections.abc import Callable, Iterable
 from xml.etree.ElementTree import ParseError
 
 from loguru import logger
+from omicidx.parsers.sra.parser import sra_object_generator
 from upath import UPath
 
-from omicidx.parsers.sra.parser import sra_object_generator
 from .schema import get_pyarrow_schema
-
 
 NormalizeFn = Callable[[dict, object], dict]
 
@@ -25,18 +25,17 @@ NormalizeFn = Callable[[dict, object], dict]
 def iter_sra_record_dicts_from_mirror_url(url: str) -> Iterable[dict]:
     """
     Stream remote .xml.gz -> yield dict records without staging the .gz locally.
-    
+
     Args:
         url: URL to the SRA mirror .xml.gz file
-        
+
     Yields:
         Parsed SRA record dictionaries
     """
     up = UPath(url)
-    with up.open("rb") as f_in:
-        with gzip.GzipFile(fileobj=f_in, mode="rb") as gz:
-            for obj in sra_object_generator(gz):
-                yield obj.data
+    with up.open("rb") as f_in, gzip.GzipFile(fileobj=f_in, mode="rb") as gz:
+        for obj in sra_object_generator(gz):
+            yield obj.data
 
 
 def process_mirror_entry_to_parquet_parts(
@@ -44,14 +43,14 @@ def process_mirror_entry_to_parquet_parts(
     url: str,
     out_dir: UPath,
     entity: str,
-    normalize_fn: Optional[NormalizeFn] = None,
+    normalize_fn: NormalizeFn | None = None,
     basename: str = "data",
 ) -> list[UPath]:
     """
     Stream parse + write parquet in bounded-memory chunks.
-    
+
     Writes parquet files to {out_dir}/{basename}_{part:05d}.parquet
-    
+
     Args:
         url: URL to the SRA mirror .xml.gz file
         out_dir: Output directory (can be local or remote)
@@ -59,20 +58,20 @@ def process_mirror_entry_to_parquet_parts(
         schema: PyArrow schema (defaults to PYARROW_SCHEMAS[entity])
         normalize_fn: Optional function to normalize records
         basename: Base filename for parquet parts
-        
+
     Returns:
         List of written parquet file paths
     """
     CHUNK_SIZE = 500_000
     compression = "zstd"
-    
+
     import pyarrow as pa
     import pyarrow.parquet as pq
 
     schema = get_pyarrow_schema(entity)
 
     out_dir.mkdir(parents=True, exist_ok=True)
-    
+
     logger.info(f"Pushing to output directory: {out_dir}")
 
     buf: list[dict] = []

@@ -9,80 +9,81 @@ Implemented as an iterator
 >>>     print(bios.dict())
 """
 
+import datetime
+import re
+import typing
 import xml.etree.ElementTree as ET
 from xml.etree.ElementTree import Element
-import typing
-import re
+
 import pydantic
-import datetime
 
 
 class IdRecs(pydantic.BaseModel):
-    db: typing.Optional[str]
-    label: typing.Optional[str]
-    id: typing.Optional[str]
+    db: str | None
+    label: str | None
+    id: str | None
 
 
 class AttrRecs(pydantic.BaseModel):
-    attribute_name: typing.Optional[str]
-    display_name: typing.Optional[str]
-    harmonized_name: typing.Optional[str]
-    value: typing.Optional[str]
-    unit: typing.Optional[str]
+    attribute_name: str | None
+    display_name: str | None
+    harmonized_name: str | None
+    value: str | None
+    unit: str | None
 
 
 class BioSample(pydantic.BaseModel):
     accession: str
     id: str
-    title: typing.Optional[str]
-    description: typing.Optional[str]
+    title: str | None
+    description: str | None
     taxonomy_name: str
     taxon_id: int
     attribute_recs: list[AttrRecs]
     attributes: list[str]
-    model: typing.Optional[str]
+    model: str | None
     id_recs: list[IdRecs]
     ids: list[str]
-    sra_sample: typing.Optional[str]
-    dbgap: typing.Optional[str]
-    gsm: typing.Optional[str]
-    publication_date: typing.Optional[datetime.datetime]
-    last_update: typing.Optional[datetime.datetime]
-    submission_date: typing.Optional[datetime.datetime]
-    access: typing.Optional[str]
+    sra_sample: str | None
+    dbgap: str | None
+    gsm: str | None
+    publication_date: datetime.datetime | None
+    last_update: datetime.datetime | None
+    submission_date: datetime.datetime | None
+    access: str | None
 
 
 class SimplePublication(pydantic.BaseModel):
-    db: typing.Optional[str]
-    id: typing.Optional[str]
-    pubdate: typing.Optional[datetime.datetime]
+    db: str | None
+    id: str | None
+    pubdate: datetime.datetime | None
 
 
 class ExternalLink(pydantic.BaseModel):
-    url: typing.Optional[str]
-    label: typing.Optional[str]
-    category: typing.Optional[str]
+    url: str | None
+    label: str | None
+    category: str | None
 
 
 class LocusTag(pydantic.BaseModel):
-    biosample_id: typing.Optional[str]
-    assembly_id: typing.Optional[str]
+    biosample_id: str | None
+    assembly_id: str | None
     value: str
 
 
 class BioProject(pydantic.BaseModel):
     data_types: list[str] = []
-    description: typing.Optional[str]
+    description: str | None
     accession: str
-    name: typing.Optional[str]
+    name: str | None
     publications: list[SimplePublication] = []
-    title: typing.Optional[str]
+    title: str | None
     external_links: list[ExternalLink] = []
-    release_date: typing.Optional[str]
+    release_date: str | None
     locus_tags: list[LocusTag] = []
 
 
-class BioSampleParser(object):
+class BioSampleParser:
     """Parse a BioSample xml file.
 
     This is a generator that yields dict records.
@@ -105,9 +106,9 @@ class BioSampleParser(object):
         return self
 
     def __next__(self):
-        for event, elem in self.context:
+        for _event, elem in self.context:
             if elem.tag == "BioSample":
-                bios = dict()
+                bios = {}
                 bios["is_reference"] = None
                 for k, v in elem.items():
                     bios[k] = v
@@ -240,7 +241,7 @@ class BioProjectParser(typing.Iterable):
         return self
 
     def __next__(self):
-        for event, elem in self.context:
+        for _event, elem in self.context:
             if elem.tag == "Package":
                 results = parse_bioproject_xml_element(elem)
                 elem.clear()

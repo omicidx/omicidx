@@ -9,14 +9,14 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from omicidx.etl.biosample.extract import biosample
+from omicidx.etl.build_db import build_db
 from omicidx.etl.etl.europepmc_textmined import europepmc
 from omicidx.etl.etl.icite import icite
 from omicidx.etl.etl.pubmed import pubmed
 from omicidx.etl.geo.extract import geo
 from omicidx.etl.nih_reporter import nih_reporter
-from omicidx.etl.sra.cli import sra
 from omicidx.etl.sql.runner import sql
-from omicidx.etl.build_db import build_db
+from omicidx.etl.sra.cli import sra
 
 
 @click.group()

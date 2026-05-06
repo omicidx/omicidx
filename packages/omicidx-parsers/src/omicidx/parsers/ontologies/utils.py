@@ -6,7 +6,7 @@ from omicidx.parsers.ontologies.utils import parse_ontology
 cl = ontology_from_obo_library('cl.obo')
 cl_item = cl['CL:0000900']
 # lowercase definition
-cl_item.definition.lower() 
+cl_item.definition.lower()
 # term
 cl_item.name
 # all direct relationships
@@ -15,23 +15,24 @@ cl_item.relationships
 #  and an equivalent subclasses is available (all descendents)
 list(cl_item.superclasses())
 """
-from pronto import Ontology
-import requests
 
-ONTOLOGY_CATALOG_URL = 'http://obofoundry.org/registry/ontologies.jsonld'
+import requests
+from pronto import Ontology
+
+ONTOLOGY_CATALOG_URL = "http://obofoundry.org/registry/ontologies.jsonld"
 
 
 def ontology_from_obo_library(ontology_short_name: str) -> Ontology:
     """parse an ontology
 
-    This is taken directly from pronto Ontology right 
+    This is taken directly from pronto Ontology right
     now. Parse an OBO, JSON-graph, or OWL format ontology.
-    
+
     Parameters
     ==========
-    ontology_short_name: str 
+    ontology_short_name: str
         The short name from (cl.obo for cell line, ncit.obo for NCIT, etc.)
-        
+
     Return
     ======
     An pronto Ontology object
@@ -54,4 +55,4 @@ def get_all_ontologies_from_obo_library():
 
     """
     resp = requests.get(ONTOLOGY_CATALOG_URL)
-    return resp.json()['ontologies']
+    return resp.json()["ontologies"]

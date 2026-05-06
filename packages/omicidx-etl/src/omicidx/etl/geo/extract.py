@@ -1,30 +1,24 @@
-import anyio
-import re
 import faulthandler
-from upath import UPath
-from datetime import timedelta, datetime, date
-from dateutil.relativedelta import relativedelta
-import click
-import polars as pl
-
-
 import gzip
+import re
+import shutil
+import tempfile
+from datetime import date, datetime, timedelta
 
+import anyio
+import click
 import httpx
+import polars as pl
+import tenacity
 from anyio import create_memory_object_stream
-from anyio.streams.memory import MemoryObjectSendStream, MemoryObjectReceiveStream
+from anyio.streams.memory import MemoryObjectReceiveStream, MemoryObjectSendStream
+from dateutil.relativedelta import relativedelta
+from omicidx.etl.log import get_logger
 from omicidx.parsers.geo import parser as gp
 from tenacity import retry
-import tenacity
-
-from omicidx.etl.log import get_logger
+from upath import UPath
 
 logger = get_logger(__name__)
-
-
-import tempfile
-import shutil
-
 
 faulthandler.enable()
 
@@ -32,17 +26,17 @@ faulthandler.enable()
 @retry(
     wait=tenacity.wait_exponential_jitter(2, 30),
     stop=tenacity.stop_after_attempt(5),
-# retry=tenacity.retry_if_exception(
-#         lambda e: (
-#             # turns out that the GEO API is not very reliable
-#             # and returns 429s and 404s for valid accessions
-#             (isinstance(e, httpx.HTTPStatusError) and (e.response.status_code in {429, 404}))
-#             or isinstance(
-#                 e,
-#                 (httpx.RemoteProtocolError, httpx.ConnectError, httpx.TimeoutException),
-#             )
-#         )
-#     ),
+    # retry=tenacity.retry_if_exception(
+    #         lambda e: (
+    #             # turns out that the GEO API is not very reliable
+    #             # and returns 429s and 404s for valid accessions
+    #             (isinstance(e, httpx.HTTPStatusError) and (e.response.status_code in {429, 404}))
+    #             or isinstance(
+    #                 e,
+    #                 (httpx.RemoteProtocolError, httpx.ConnectError, httpx.TimeoutException),
+    #             )
+    #         )
+    #     ),
     before_sleep=lambda retry_state: logger.warning(
         f"GEO SOFT request failed, retrying in 2 seconds (attempt {retry_state.attempt_number}/5)"
     ),
@@ -50,10 +44,10 @@ faulthandler.enable()
 async def get_geo_soft(accession, client) -> str:
     """Fetches the GEO SOFT file for the given accession."""
     params = {}
-    params['acc'] = accession
-    params['targ'] = 'self'
-    params['form'] = 'text'
-    params['view'] = 'quick' if accession.startswith("GSM") else 'brief'
+    params["acc"] = accession
+    params["targ"] = "self"
+    params["form"] = "text"
+    params["view"] = "quick" if accession.startswith("GSM") else "brief"
     url = "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi"
     response = await client.get(url, params=params)
     response.raise_for_status()
@@ -69,11 +63,14 @@ async def fetch_geo_soft_worker(
     We read from receive stream and send the text to the send stream.
     The send stream is then processed by the write_geo_ids function.
     """
-    async with httpx.AsyncClient(timeout=30) as client:
-        async with accessions_to_fetch_receive, entity_text_to_process_send:
-            async for accession in accessions_to_fetch_receive:
-                geo_text = await get_geo_soft(accession, client)
-                await entity_text_to_process_send.send(geo_text)
+    async with (
+        httpx.AsyncClient(timeout=30) as client,
+        accessions_to_fetch_receive,
+        entity_text_to_process_send,
+    ):
+        async for accession in accessions_to_fetch_receive:
+            geo_text = await get_geo_soft(accession, client)
+            await entity_text_to_process_send.send(geo_text)
 
 
 def get_result_paths(start_date, end_date, output_path: UPath):
@@ -90,9 +87,27 @@ def get_result_paths(start_date, end_date, output_path: UPath):
     Returns:
         Tuple of UPaths for GSE, GSM, and GPL
     """
-    gse_path = output_path / "gse" / f"year={start_date.strftime('%Y')}" / f"month={start_date.strftime('%m')}" / "data_0.ndjson.gz"
-    gsm_path = output_path / "gsm" / f"year={start_date.strftime('%Y')}" / f"month={start_date.strftime('%m')}" / "data_0.ndjson.gz"
-    gpl_path = output_path / "gpl" / f"year={start_date.strftime('%Y')}" / f"month={start_date.strftime('%m')}" / "data_0.ndjson.gz"
+    gse_path = (
+        output_path
+        / "gse"
+        / f"year={start_date.strftime('%Y')}"
+        / f"month={start_date.strftime('%m')}"
+        / "data_0.ndjson.gz"
+    )
+    gsm_path = (
+        output_path
+        / "gsm"
+        / f"year={start_date.strftime('%Y')}"
+        / f"month={start_date.strftime('%m')}"
+        / "data_0.ndjson.gz"
+    )
+    gpl_path = (
+        output_path
+        / "gpl"
+        / f"year={start_date.strftime('%Y')}"
+        / f"month={start_date.strftime('%m')}"
+        / "data_0.ndjson.gz"
+    )
     return gse_path, gsm_path, gpl_path
 
 
@@ -122,7 +137,7 @@ async def write_geo_entity_worker(
         with (
             gzip.open(gse_temp.name, "wb") as gse_tmp_write,
             gzip.open(gsm_temp.name, "wb") as gsm_tmp_write,
-            gzip.open(gpl_temp.name, "wb") as gpl_tmp_write
+            gzip.open(gpl_temp.name, "wb") as gpl_tmp_write,
         ):
             async with entity_text_to_process_receive:
                 async for text in entity_text_to_process_receive:
@@ -144,7 +159,6 @@ async def write_geo_entity_worker(
                         )  # type: ignore
                     record_counts[entity.accession[:3]] += 1  # type: ignore
 
-
         # Always write all three files, even if empty.
         # This ensures the skip guard in geo_metadata_by_date (which checks
         # that all three paths exist) correctly skips months on subsequent runs,
@@ -155,9 +169,8 @@ async def write_geo_entity_worker(
             (gpl_temp, gpl_path, "GPL"),
         ]:
             path.parent.mkdir(parents=True, exist_ok=True)
-            with open(temp_file.name, "rb") as src:
-                with path.open("wb") as dst:
-                    shutil.copyfileobj(src, dst)
+            with open(temp_file.name, "rb") as src, path.open("wb") as dst:
+                shutil.copyfileobj(src, dst)
             n = record_counts[entity_type]
             if n > 0:
                 logger.info(f"Wrote {n} {entity_type} records to {path}")
@@ -186,7 +199,7 @@ def entrezid_to_geo(entrezid: str):
             (isinstance(e, httpx.HTTPStatusError) and e.response.status_code == 429)
             or isinstance(
                 e,
-                (httpx.RemoteProtocolError, httpx.ConnectError, httpx.TimeoutException),
+                httpx.RemoteProtocolError | httpx.ConnectError | httpx.TimeoutException,
             )
         )
     ),
@@ -219,6 +232,7 @@ async def prod1(accessions_to_fetch_send: MemoryObjectSendStream, start_date, en
                     break
                 offset += 5000
 
+
 @tenacity.retry(
     wait=tenacity.wait_fixed(2),
     stop=tenacity.stop_after_attempt(5),
@@ -227,7 +241,7 @@ async def prod1(accessions_to_fetch_send: MemoryObjectSendStream, start_date, en
             (isinstance(e, httpx.HTTPStatusError) and e.response.status_code == 429)
             or isinstance(
                 e,
-                (httpx.RemoteProtocolError, httpx.ConnectError, httpx.TimeoutException),
+                httpx.RemoteProtocolError | httpx.ConnectError | httpx.TimeoutException,
             )
         )
     ),
@@ -237,13 +251,13 @@ async def prod1(accessions_to_fetch_send: MemoryObjectSendStream, start_date, en
 )
 def gse_with_rna_seq_counts() -> pl.DataFrame:
     """GEO supplies a hidden filter for getting GSEs with RNA-seq counts
-    
-    The filter is at the level of GSEs, not GSMs. This function just 
+
+    The filter is at the level of GSEs, not GSMs. This function just
     applies the filter and returns a list of GSEs that have GEO/SRA-supplied
     RNA-seq counts.
-    
+
     It is very fast to run since it runs against eutils and only returns
-    ids. 
+    ids.
     """
     offset = 0
     RETMAX = 5000
@@ -263,17 +277,15 @@ def gse_with_rna_seq_counts() -> pl.DataFrame:
             response.raise_for_status()
             json_results = response.json()
             for id in json_results["esearchresult"]["idlist"]:
-                gses_with_rna_seq_counts.append(
-                    {"accession": entrezid_to_geo(id)}
-                )
+                gses_with_rna_seq_counts.append({"accession": entrezid_to_geo(id)})
             if len(json_results["esearchresult"]["idlist"]) < RETMAX:
                 break
             offset += 5000
             import time
+
             time.sleep(0.5)  # to avoid hitting the rate limit
     # list of string GSE_ACCESSIONs
     return pl.DataFrame({"accession": gses_with_rna_seq_counts})
-
 
 
 async def geo_metadata_by_date(
@@ -304,7 +316,7 @@ async def geo_metadata_by_date(
     async with anyio.create_task_group() as tg:
         # start 30 workers to fetch the GEO SOFT files
         async with accessions_to_fetch_receive, entity_text_to_process_send:
-            for i in range(30):
+            for _i in range(30):
                 tg.start_soon(
                     fetch_geo_soft_worker,
                     accessions_to_fetch_receive.clone(),
@@ -384,10 +396,12 @@ def geo():
 def extract(output_base: str | None):
     """Extract GEO metadata."""
     from omicidx.etl.config import settings
+
     base = UPath(output_base) if output_base else settings.publish_directory
     output_path = base / "geo" / "raw"
     logger.info(f"Starting GEO extraction to {output_path}")
     anyio.run(main, output_path)
+
 
 if __name__ == "__main__":
     geo()

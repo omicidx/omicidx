@@ -15,7 +15,9 @@ The extract command will:
 2. Process only the current batch (latest Full + subsequent Incrementals)
 3. Write to parquet format with proper partitioning
 """
+
 import sys
+
 from .cli import sra
 
 if __name__ == "__main__":

@@ -34,9 +34,7 @@ def get_sql(name: str) -> str:
     path = SQL_DIR / name
     if not path.exists():
         available = ", ".join(list_sql_files())
-        raise FileNotFoundError(
-            f"SQL file '{name}' not found. Available: {available}"
-        )
+        raise FileNotFoundError(f"SQL file '{name}' not found. Available: {available}")
     return path.read_text()
 
 

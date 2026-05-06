@@ -1,8 +1,7 @@
 from click.testing import CliRunner
-from upath import UPath
-
 from omicidx_etl.cli import cli
 from omicidx_etl.etl import pubmed as pubmed_module
+from upath import UPath
 
 
 def test_pubmed_command_is_registered():
@@ -40,5 +39,7 @@ def test_get_needed_ids_without_network(monkeypatch):
         },
     )
 
-    needed = pubmed_module.get_needed_ids(UPath("s3://bucket/pubmed/raw"), replace=False)
+    needed = pubmed_module.get_needed_ids(
+        UPath("s3://bucket/pubmed/raw"), replace=False
+    )
     assert needed == {"pubmed25n0002"}

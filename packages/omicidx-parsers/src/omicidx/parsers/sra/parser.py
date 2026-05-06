@@ -13,15 +13,17 @@ function.
 
 """
 
+import contextlib
+import gzip
+import logging
 import re
-from collections import defaultdict
 import urllib
 import urllib.error
 import urllib.request
 import xml.etree.ElementTree as etree
-import gzip
+from collections import defaultdict
+
 from . import pydantic_models
-import logging
 
 logger = logging.getLogger("sra_parser")
 
@@ -35,10 +37,10 @@ def parse_xml_url(url: str, entity: str, gz: bool = True):
                 rec = globals()["SRA" + entity.title() + "Record"](element).data
                 n += 1
                 if (n % 100000) == 0:
-                    logger.info("parsed {} {} entries".format(entity, n))
+                    logger.info(f"parsed {entity} {n} entries")
                 element.clear()
                 yield (rec)
-    logger.info("parsed {} entity entries".format(n))
+    logger.info(f"parsed {n} entity entries")
 
 
 def parse_xml_file(xmlfilename):
@@ -83,16 +85,17 @@ def parse_xml_file(xmlfilename):
         entity = "EXPERIMENT"
         sra_parser = SRAExperimentRecord
     n = 0
-    with open_file(xmlfilename) as f:
+    open_func = gzip.open if xmlfilename.endswith(".gz") else open
+    with open_func(xmlfilename) as f:
         for event, element in etree.iterparse(f):
             if event == "end" and element.tag == entity:
                 rec = sra_parser(element).data
                 n += 1
                 if (n % 100000) == 0:
-                    logger.info("parsed {} {} entries".format(entity, n))
+                    logger.info(f"parsed {entity} {n} entries")
                 element.clear()
                 yield (rec)
-    logger.info("parsed {} entity entries".format(n))
+    logger.info(f"parsed {n} entity entries")
 
 
 def parse_study(xml):
@@ -121,11 +124,9 @@ def parse_study(xml):
         "study_accession",
         "title",
     ]
-    d = dict((k, None) for k in required_keys)
-    try:
+    d = dict.fromkeys(required_keys)
+    with contextlib.suppress(AttributeError):
         d.update(xml.attrib)
-    except AttributeError:
-        pass
     path_map = {
         "title": (".//STUDY_TITLE", "text"),
         "abstract": (".//STUDY_ABSTRACT", "text"),
@@ -139,9 +140,8 @@ def parse_study(xml):
     pubmeds = []
     if "xrefs" in d:
         for xref in d["xrefs"]:
-            if xref["db"] == "pubmed":
-                if xref["id"] is not None:
-                    pubmeds.append(xref["id"])
+            if xref["db"] == "pubmed" and xref["id"] is not None:
+                pubmeds.append(xref["id"])
     d.update({"pubmed_ids": pubmeds})
     return d
 
@@ -192,15 +192,10 @@ def parse_run(xml):
     d = {}
     d.update(xml.attrib)
     for k in ["total_spots", "total_bases", "size"]:
-        try:
+        with contextlib.suppress(KeyError, ValueError, TypeError):
             d[k] = int(d[k])
-        except:
-            # missing some key elements
-            pass
-    try:
+    with contextlib.suppress(BaseException):
         d["avg_length"] = float(d["total_bases"]) / d["total_spots"]
-    except:
-        pass
     path_map = {
         "experiment_accession": ("EXPERIMENT_REF", "accession"),
         "title": ("TITLE", "text"),
@@ -216,11 +211,8 @@ def parse_run(xml):
     d = try_update(d, _parse_run_stats(xml.find("Statistics")))
     d = try_update(d, _parse_run_bases(xml.find("Bases")))
     d = try_update(d, _parse_run_qualities(xml))
-    try:
-        # already have accession, so no need for this
+    with contextlib.suppress(KeyError):
         del d["run_accession"]
-    except:
-        pass
     return d
 
 
@@ -254,12 +246,12 @@ def _parse_run_files(xml):
     ret = []
     for f in files:
         retfile = {}
-        for k in f.keys():
+        for k in f:
             retfile[k] = f.get(k)
         retfile["alternatives"] = []
         for alt in f.findall("Alternatives"):
             altfile = {}
-            for k in alt.keys():
+            for k in alt:
                 altfile[k] = alt.get(k)
             retfile["alternatives"].append(altfile)
         ret.append(retfile)
@@ -303,10 +295,10 @@ def parse_experiment(xml):
         "title",
     ]
 
-    d = dict((k, None) for k in required_keys)
+    d = dict.fromkeys(required_keys)
     try:
         d.update(xml.attrib)
-    except:
+    except (AttributeError, TypeError):
         import xml.etree.ElementTree as et
 
         et.tostring(xml)
@@ -388,10 +380,10 @@ def parse_sample(xml):
 
 def _parse_run_reads(node):
     """Parse reads from runs."""
-    d = dict()
+    d = {}
     try:
         d["spot_length"] = int(node.find(".//SPOT_LENGTH").text)
-    except Exception as e:
+    except Exception:
         d["spot_length"] = 0
     d["reads"] = []
     if node is None:
@@ -402,22 +394,14 @@ def _parse_run_reads(node):
 
     for read in readrecs:
         r = {}
-        try:
+        with contextlib.suppress(BaseException):
             r["read_index"] = int(read.find("./READ_INDEX").text)
-        except:
-            pass
-        try:
+        with contextlib.suppress(BaseException):
             r["read_class"] = read.find("./READ_CLASS").text
-        except:
-            pass
-        try:
+        with contextlib.suppress(BaseException):
             r["read_type"] = read.find("./READ_TYPE").text
-        except:
-            pass
-        try:
+        with contextlib.suppress(BaseException):
             r["base_coord"] = int(read.find("./BASE_COORD").text)
-        except:
-            pass
         d["reads"].append(r)
 
     return d
@@ -425,16 +409,14 @@ def _parse_run_reads(node):
 
 def _parse_run_qualities(node):
     """Parse the quality stats, if available, from RUN"""
-    d = dict()
+    d = {}
     d["qualities"] = []
     qualrecs = node.findall(".//Quality")
     for qual in qualrecs:
-        try:
+        with contextlib.suppress(BaseException):
             d["qualities"].append(
                 {"quality": int(qual.get("value")), "count": int(qual.get("count"))}
             )
-        except:
-            pass
 
     return d
 
@@ -442,7 +424,9 @@ def _parse_run_qualities(node):
 def _parse_taxon(node):
     """Parse taxonomy informaiton."""
 
-    def crawl(node, d=[]):
+    def crawl(node, d=None):
+        if d is None:
+            d = []
         for i in node:
             rank = i.get("rank", "Unkown")
             parent = None
@@ -479,7 +463,7 @@ def _parse_taxon(node):
     try:
         if d["tax_analysis"]["nspot_analyze"] is not None:
             d["tax_analysis"]["nspot_analyze"] = int(d["tax_analysis"]["nspot_analyze"])
-    except:
+    except (KeyError, ValueError, TypeError):
         logger.debug("Non integer count: nspot_analyze")
         logger.debug(d["tax_analysis"]["nspot_analyze"])
         d["tax_analysis"]["nspot_analyze"] = None
@@ -487,7 +471,7 @@ def _parse_taxon(node):
     try:
         if d["tax_analysis"]["total_spots"] is not None:
             d["tax_analysis"]["total_spots"] = int(d["tax_analysis"]["total_spots"])
-    except:
+    except (KeyError, ValueError, TypeError):
         logger.debug("Non integer count: total_spots")
         logger.debug(d["tax_analysis"]["total_spots"])
         d["tax_analysis"]["total_spots"] = None
@@ -495,7 +479,7 @@ def _parse_taxon(node):
     try:
         if d["tax_analysis"]["mapped_spots"] is not None:
             d["tax_analysis"]["mapped_spots"] = int(d["tax_analysis"]["mapped_spots"])
-    except:
+    except (KeyError, ValueError, TypeError):
         logger.debug("Non integer count: mapped_spots")
         logger.debug(d["tax_analysis"]["mapped_spots"])
         d["tax_analysis"]["mapped_spots"] = None
@@ -603,7 +587,7 @@ def _get_special_ids(id_rec):
     except Exception:
         norm = ""
 
-    if norm in namespace_map.keys():
+    if norm in namespace_map:
         # Normalize the ids a little
         id_norm = (
             re.sub("geo|gds|bioproject|biosample|pubmed|pmid", "", _id.lower())
@@ -660,7 +644,7 @@ def _process_path_map(xml, path_map):
                     d[k] = child[0].tag
             else:
                 d[k] = xml.find(v[0]).get(v[1])
-        except Exception as e:
+        except Exception:
             pass
     return d
 
@@ -680,11 +664,11 @@ def try_update(d, value):
     try:
         d.update(value)
         return d
-    except Exception as e:
+    except Exception:
         return d
 
 
-class SRAXMLRecord(object):
+class SRAXMLRecord:
     def __init__(self, xml):
         # if(type(xml) is not xml.etree.ElementTree.Element):
         #    raise(TypeError('xml should be of type xml.etree.ElementTree.Element'))

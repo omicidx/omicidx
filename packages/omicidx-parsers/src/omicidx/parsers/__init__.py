@@ -1,2 +1,1 @@
-"""Hello there
-"""
+"""Hello there"""

@@ -6,23 +6,17 @@ Common use will be to get a list of accessions using:
 
 """
 
-from Bio import Entrez
-import logging
 import collections
-import re
 import datetime
+import logging
+import re
 import urllib
-from xml import etree
-import xml
 from io import StringIO
-import requests
-import httpx
-from tenacity import retry
-from tenacity.wait import wait_exponential
-from tenacity.stop import stop_after_attempt
 from urllib.error import HTTPError  # for Python 3
 
+import httpx
 import omicidx.parsers.geo.pydantic_models as pydantic_models
+from Bio import Entrez
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("omicidx")
@@ -77,12 +71,9 @@ def get_geo_accessions(
     entrez = get_entrez_instance(email)
     if etyp is not None:
         if etyp not in ETYP:
-            raise Exception(
-                "etype {} not one of the accepted etyps {}".format(etyp, str(ETYP))
-            )
+            raise Exception(f"etype {etyp} not one of the accepted etyps {str(ETYP)}")
         term = term + " " + etyp + "[ETYP]"
     if term != "":
-
         handle = entrez.esearch(db="gds", term=term, usehistory="y")
     else:
         raise Exception("term is required for entrez search access")
@@ -90,11 +81,10 @@ def get_geo_accessions(
     webenv = search_results["WebEnv"]
     query_key = search_results["QueryKey"]
     count = int(search_results["Count"])
-    data = []
-    logging.info("found {} records for {} database".format(count, etyp))
+    logging.info(f"found {count} records for {etyp} database")
     n = 0
     for start in range(0, count, batch_size):
-        end = min(count, start + batch_size)
+        min(count, start + batch_size)
         attempt = 0
         fetch_handle = None
         while attempt < 10:
@@ -118,12 +108,12 @@ def get_geo_accessions(
                 import time
 
                 if isinstance(err, HTTPError):
-                    logging.error("Received error from server %s" % err)
-                    logging.error("Attempt %i of 10" % attempt)
+                    logging.error(f"Received error from server {err}")
+                    logging.error(f"Attempt {attempt} of 10")
                     time.sleep(1 * attempt * attempt)
                 else:
-                    logging.error("RuntimeError received: {}".format(err))
-                    logging.error("Attempt %i of 10" % attempt)
+                    logging.error(f"RuntimeError received: {err}")
+                    logging.error(f"Attempt {attempt} of 10")
                     time.sleep(1)
             else:
                 raise
@@ -146,9 +136,7 @@ def get_geo_accession_xml(accession, targ="all", view="brief"):
     >>> handle = get_geo_accession_xml('GSE2553')
     >>> handle.readlines()
     """
-    url = "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?targ={}&acc={}&form=xml&view={}".format(
-        targ, accession, view
-    )
+    url = f"https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?targ={targ}&acc={accession}&form=xml&view={view}"
     attempt = 0
     while attempt < 10:
         attempt += 1
@@ -156,8 +144,8 @@ def get_geo_accession_xml(accession, targ="all", view="brief"):
             return urllib.request.urlopen(url)
             break
         except Exception as err:
-            print("Received error from server %s" % err)
-            print("Attempt %i of 3" % attempt)
+            print(f"Received error from server {err}")
+            print(f"Attempt {attempt} of 3")
             import time
 
             time.sleep(1 * attempt)
@@ -183,9 +171,7 @@ def get_geo_accession_soft(
     >>> handle.readlines()
     """
     logging.info(f"Accessing accession {accession} in SOFT format")
-    url = "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?targ={}&acc={}&form=text&view={}".format(
-        targ, accession, view
-    )
+    url = f"https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?targ={targ}&acc={accession}&form=text&view={view}"
 
     # @retry(
     #     wait=wait_exponential(multiplier=1, min=10, max=60), stop=stop_after_attempt(30)
@@ -211,10 +197,10 @@ def _split_on_first_equal(line, val="="):
     >>> _split_on_first_equal("this = abc = 1")
     ('this', 'abc = 1')
     """
-    l = line.split(" {} ".format(val))
-    if l[0].endswith(" {}".format(val)):
-        l[0] = l[0].replace(" {}".format(val), "")
-    return (l[0], " {} ".format(val).join(l[1:]))
+    parts = line.split(f" {val} ")
+    if parts[0].endswith(f" {val}"):
+        parts[0] = parts[0].replace(f" {val}", "")
+    return (parts[0], f" {val} ".join(parts[1:]))
 
 
 def get_geo_entities(txt):
@@ -286,7 +272,7 @@ def get_biosample_from_relations(relation_list):
 
 
 def get_channel_characteristics(d, ch):
-    ch_items = list([k for k in d.keys() if k.endswith("ch{}".format(ch))])
+    ch_items = [k for k in d if k.endswith(f"ch{ch}")]
     characteristics = []
     ret = {}
     for k in ch_items:
@@ -294,10 +280,10 @@ def get_channel_characteristics(d, ch):
             for characteristic in d[k]:
                 characteristics.append(tuple(characteristic.split(": ")))
             continue
-        newk = k.replace("_ch{}".format(ch), "")
-        ret[k.replace("_ch{}".format(ch), "")] = "\n".join(d[k])
+        newk = k.replace(f"_ch{ch}", "")
+        ret[k.replace(f"_ch{ch}", "")] = "\n".join(d[k])
         if newk == "taxid":
-            ret[newk] = list([int(x) for x in ret[newk].split("\n")])
+            ret[newk] = [int(x) for x in ret[newk].split("\n")]
     char = []
     for v in characteristics:
         if len(v) == 1:
@@ -316,7 +302,7 @@ def get_channel_characteristics(d, ch):
 
 def _split_geo_name(v):
     """split name of form first,middle,last into dict"""
-    return dict(zip("first middle last".split(), v.split(",")))
+    return dict(zip(["first", "middle", "last"], v.split(","), strict=False))
 
 
 def _create_contact_from_parsed(d):
@@ -328,10 +314,13 @@ def _create_contact_from_parsed(d):
                 v = None
             if k == "contact_name":
                 v = _split_geo_name(v)
-            if k == "contact_web_link":
-                if v is not None and type(v) == str and len(v):
-                    if not str(v).startswith("http"):
-                        v = "http://" + str(v)
+            if (
+                k == "contact_web_link"
+                and isinstance(v, str)
+                and len(v)
+                and not v.startswith("http")
+            ):
+                v = "http://" + v
             contact_dict[k.replace("contact_", "")] = v
     return contact_dict
 
@@ -339,7 +328,7 @@ def _create_contact_from_parsed(d):
 def _split_contributor_names(contribs):
     if len(contribs) == 0:
         return []
-    return list([_split_geo_name(v) for v in contribs])
+    return [_split_geo_name(v) for v in contribs]
 
 
 ###############################################
@@ -351,21 +340,21 @@ def _split_contributor_names(contribs):
 def _parse_single_entity_soft(entity_txt):
     # Deal with common stuff first:
     tups = [_split_on_first_equal(line) for line in entity_txt]
-    accession = tups[0][1]
+    tups[0][1]
 
     entity_type = tups[0][0].replace("^", "")
     tups = [(re.sub("![^_]+_", "", tup[0]), tup[1]) for tup in tups]
     d = collections.defaultdict(list)
     for tup in tups[1:]:
         d[tup[0]].append(tup[1])
-    d2 = dict((k, v) for k, v in d.items())
+    d2 = dict(d.items())
     # int fields
     INT_FIELDS = ["pubmed_id", "sample_taxid", "platform_taxid"]
     for i in INT_FIELDS:
         if i in d2:
             try:
-                d2[i] = list(map(lambda x: int(x), d2[i]))
-            except:
+                d2[i] = [int(x) for x in d2[i]]
+            except (TypeError, ValueError):
                 d2[i] = []
     # change "geo_accesion = [...]" to "accession = ..."
     if "geo_accession" in d2:
@@ -435,9 +424,8 @@ def _parse_single_gse_soft(d2):
             supp_files += d2[k]
             del d2[k]
     d2["supplemental_files"] = supp_files
-    if len(supp_files) > 0:
-        if supp_files[0] == "NONE":
-            supp_files = []
+    if len(supp_files) > 0 and supp_files[0] == "NONE":
+        supp_files = []
     d2["_entity"] = "GSE"
     if "contributor" in d2:
         d2["contributor"] = _split_contributor_names(d2["contributor"])
@@ -457,7 +445,6 @@ def _create_gsm_channel_data(d):
 
 
 # Search for fields like _ch1 and _ch2 ....
-import re
 
 r1 = re.compile(r"_ch\d+$")
 
@@ -487,7 +474,7 @@ def _parse_single_gsm_soft(d2):
     try:
         d2["biosample"] = get_biosample_from_relations(d2["relation"])[0]
         d2["sra_experiment"] = get_SRA_from_relations(d2["relation"])[0]
-    except:
+    except (KeyError, IndexError):
         d2["biosample"] = None
         d2["sra_experiment"] = None
     if "contributor" in d2:
@@ -568,7 +555,7 @@ def geo_entity_iterator(geo: str, targ: str = "self", view: str = "brief"):
         try:
             if isinstance(line, bytes):
                 line = line.decode()
-        except:
+        except (AttributeError, UnicodeDecodeError):
             pass
         line = line.strip()
 

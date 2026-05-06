@@ -1,15 +1,15 @@
-import re
 import datetime
+import re
+import shutil
+import tempfile
+from urllib.request import urlretrieve
+
 import click
 import pubmed_parser as pp
-from urllib.request import urlretrieve
-import tempfile
-import shutil
-from upath import UPath
 import pyarrow as pa
 import pyarrow.parquet as pq
-
 from omicidx.etl.log import get_logger
+from upath import UPath
 
 logger = get_logger(__name__)
 
@@ -21,7 +21,7 @@ OUTPUT_EXTENSION = ".parquet"
 
 def _url_to_pubmed_id(url: UPath) -> str:
     """Get the pubmed id from the url.
-    
+
     For example, for a URL like `https://ftp.ncbi.nlm.nih.gov/pubmed/pubmed25n0023.xml.gz`
     it will return `pubmed25n0023`.
     """
@@ -30,22 +30,18 @@ def _url_to_pubmed_id(url: UPath) -> str:
 
 def load_available_urls():
     """Load the available urls from the base directory.
-    
+
     Note that this function covers both the base and update URLs."""
     available_urls = list(PUBMED_BASE.glob("baseline/pubmed*.xml.gz"))
     available_urls += list(PUBMED_BASE.glob("updatefiles/pubmed*.xml.gz"))
-    id_to_available_url_map = {
-        _url_to_pubmed_id(url): url for url in available_urls
-    }
+    id_to_available_url_map = {_url_to_pubmed_id(url): url for url in available_urls}
     return id_to_available_url_map
 
 
 def load_existing_urls(output_path: UPath):
     """Load the existing urls from the output directory."""
     existing_urls = list(output_path.glob(f"**/*{OUTPUT_EXTENSION}"))
-    id_to_existing_url_map = {
-        _url_to_pubmed_id(url): url for url in existing_urls
-    }
+    id_to_existing_url_map = {_url_to_pubmed_id(url): url for url in existing_urls}
     return id_to_existing_url_map
 
 
@@ -53,7 +49,7 @@ def get_needed_ids(output_path: UPath, replace=False):
     """Return the ids that are needed to be processed."""
     available_urls = load_available_urls()
     existing_urls = load_existing_urls(output_path)
-    
+
     in_ids = set(available_urls.keys())
     out_ids = set(existing_urls.keys())
 
@@ -86,7 +82,7 @@ def pubmed_url_to_parquet_file(url: UPath, output_path: UPath) -> None:
     """
     with (
         tempfile.NamedTemporaryFile(suffix=".xml.gz") as temp_xml_file,
-        tempfile.NamedTemporaryFile(suffix=".parquet") as local_parquet_file
+        tempfile.NamedTemporaryFile(suffix=".parquet") as local_parquet_file,
     ):
         localfname = temp_xml_file.name
         urlretrieve(str(url), filename=localfname)
@@ -106,10 +102,10 @@ def pubmed_url_to_parquet_file(url: UPath, output_path: UPath) -> None:
         pubmed_table = pa.Table.from_pylist(objects)
         # write the table to parquet locally first
         # then upload it to the final destination
-        pq.write_table(pubmed_table, local_parquet_file.name, compression='zstd')
+        pq.write_table(pubmed_table, local_parquet_file.name, compression="zstd")
         with parquet_file_for_url(url, output_path).open("wb") as outfile:
             logger.info(f"Writing {url} to {str(outfile)}")
-            with open(local_parquet_file.name, 'rb') as infile:
+            with open(local_parquet_file.name, "rb") as infile:
                 shutil.copyfileobj(infile, outfile)
             logger.info(f"Finished writing {url} to {str(outfile)}")
 
@@ -122,6 +118,7 @@ def etl_pubmeds(output_path: UPath, replace: bool = False):
         logger.info("Processing url: " + str(url))
         logger.info(f"Processing {index + 1} of {len(needed_urls)}")
         pubmed_url_to_parquet_file(url, output_path)  # type: ignore
+
 
 @click.group()
 def pubmed():
@@ -142,6 +139,7 @@ def resolve_output_path(output_base: str | None) -> UPath:
     """Resolve PubMed output path using base-path conventions."""
     if output_base is None:
         from omicidx.etl.config import settings
+
         return settings.publish_directory / "pubmed" / "raw"
     return UPath(output_base) / "pubmed" / "raw"
 

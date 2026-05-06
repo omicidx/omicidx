@@ -13,20 +13,17 @@ months on subsequent runs.
 """
 
 import gzip
-import io
 from datetime import date
 
-import anyio
+import omicidx_etl.geo.extract as geo_extract
 import pytest
 from anyio import create_memory_object_stream
 from upath import UPath
 
-import omicidx_etl.geo.extract as geo_extract
-
-
 # ---------------------------------------------------------------------------
 # Helper
 # ---------------------------------------------------------------------------
+
 
 def _make_paths(tmp_path: UPath, start: date, end: date):
     """Return the three output paths for a month, as local UPaths."""
@@ -40,6 +37,7 @@ def _make_paths(tmp_path: UPath, start: date, end: date):
 # ---------------------------------------------------------------------------
 # Unit tests for get_result_paths
 # ---------------------------------------------------------------------------
+
 
 def test_get_result_paths_structure(tmp_path):
     """get_result_paths returns hive-partitioned paths under OUTPUT_PATH."""
@@ -59,6 +57,7 @@ def test_get_result_paths_structure(tmp_path):
 # ---------------------------------------------------------------------------
 # Skip-guard tests
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.anyio
 async def test_skip_guard_skips_when_any_file_exists(tmp_path, monkeypatch):
@@ -81,7 +80,9 @@ async def test_skip_guard_skips_when_any_file_exists(tmp_path, monkeypatch):
     gsm.touch()
 
     async def must_not_be_called(*args, **kwargs):
-        raise AssertionError("prod1 (network) should not run when month is already processed")
+        raise AssertionError(
+            "prod1 (network) should not run when month is already processed"
+        )
 
     monkeypatch.setattr(geo_extract, "prod1", must_not_be_called)
 
@@ -116,6 +117,7 @@ async def test_skip_guard_does_not_skip_when_no_files_exist(tmp_path, monkeypatc
 # write_geo_entity_worker tests
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.anyio
 async def test_write_geo_entity_worker_always_writes_three_files(tmp_path, monkeypatch):
     """write_geo_entity_worker writes all 3 output files even when GPL has no records.
@@ -139,11 +141,15 @@ async def test_write_geo_entity_worker_always_writes_three_files(tmp_path, monke
     gse, gsm, gpl = geo_extract.get_result_paths(start, end)
     assert gse.exists(), "GSE file must always be written"
     assert gsm.exists(), "GSM file must always be written"
-    assert gpl.exists(), "GPL file must always be written (even when empty) — regression check"
+    assert gpl.exists(), (
+        "GPL file must always be written (even when empty) — regression check"
+    )
 
 
 @pytest.mark.anyio
-async def test_write_geo_entity_worker_empty_files_are_valid_gzip(tmp_path, monkeypatch):
+async def test_write_geo_entity_worker_empty_files_are_valid_gzip(
+    tmp_path, monkeypatch
+):
     """Files written for empty months are valid (possibly empty) gzip archives."""
     monkeypatch.setattr(geo_extract, "OUTPUT_PATH", UPath(tmp_path))
 

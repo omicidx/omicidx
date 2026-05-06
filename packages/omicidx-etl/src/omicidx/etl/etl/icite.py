@@ -1,14 +1,13 @@
-import zipfile
 import tarfile
+import tempfile
+import zipfile
+from pathlib import Path
+
 import click
 import httpx
-from pathlib import Path
-from upath import UPath
-import tempfile
-
-from omicidx.etl.log import get_logger
-
 from omicidx.etl.db import duckdb_connection
+from omicidx.etl.log import get_logger
+from upath import UPath
 
 logger = get_logger(__name__)
 
@@ -57,12 +56,14 @@ def _find_file(file_json: list[dict], prefix: str) -> dict:
 def _download_figshare_file(url: str, dest: str) -> None:
     """Stream-download a file from Figshare."""
     logger.info(f"Downloading {url}")
-    with httpx.Client(timeout=None, follow_redirects=True) as client:
-        with client.stream("GET", url) as response:
-            response.raise_for_status()
-            with open(dest, "wb") as f:
-                for chunk in response.iter_bytes():
-                    f.write(chunk)
+    with (
+        httpx.Client(timeout=None, follow_redirects=True) as client,
+        client.stream("GET", url) as response,
+    ):
+        response.raise_for_status()
+        with open(dest, "wb") as f:
+            for chunk in response.iter_bytes():
+                f.write(chunk)
     logger.info(f"Downloaded to {dest}")
 
 
@@ -135,11 +136,15 @@ def icite_flow(output_directory: UPath) -> list[UPath]:
 
         metadata_info = _find_file(files, "icite_metadata")
         metadata_csv = _resolve_csv_source(metadata_info, workdir)
-        metadata_files = _csv_to_parquet(metadata_csv, output_directory, "icite_metadata")
+        metadata_files = _csv_to_parquet(
+            metadata_csv, output_directory, "icite_metadata"
+        )
 
         citation_info = _find_file(files, "open_citation_collection")
         citation_csv = _resolve_csv_source(citation_info, workdir)
-        citation_files = _csv_to_parquet(citation_csv, output_directory, "icite_opencitation")
+        citation_files = _csv_to_parquet(
+            citation_csv, output_directory, "icite_opencitation"
+        )
 
     return metadata_files + citation_files
 
@@ -149,15 +154,18 @@ def icite():
     """ICITE extraction commands."""
     pass
 
+
 @icite.command()
-@click.argument('output_base', required=False, default=None)
+@click.argument("output_base", required=False, default=None)
 def extract(output_base: str | None):
     """Extract iCite data from Figshare."""
     from omicidx.etl.config import settings
+
     base = UPath(output_base) if output_base else settings.publish_directory
     output_dir = base / "icite" / "raw"
     output_dir.mkdir(parents=True, exist_ok=True)
     icite_flow(output_dir)
-    
+
+
 if __name__ == "__main__":
     extract()

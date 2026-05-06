@@ -1,20 +1,16 @@
-from datetime import datetime, timedelta, date
-import time
-import threading
-import tempfile
-from dateutil.relativedelta import relativedelta
-from typing import Iterable
-import tenacity
-import anyio
-import httpx
-import orjson
-from upath import UPath
 import shutil
+import tempfile
+from collections.abc import Iterable
+from datetime import date, datetime, timedelta
+
+import anyio
 import click
+import httpx
 import pyarrow as pa
 import pyarrow.parquet as pq
-
+import tenacity
 from omicidx.etl.log import get_logger
+from upath import UPath
 
 from .schema import get_biosample_schema
 
@@ -53,7 +49,7 @@ class SampleFetcher:
         returns a string that can be used in the `filter` parameter
         of the API request.
         """
-        return f"""dt:update:from={self.start_date.strftime('%Y-%m-%d')}until={self.end_date.strftime('%Y-%m-%d')}"""
+        return f"""dt:update:from={self.start_date.strftime("%Y-%m-%d")}until={self.end_date.strftime("%Y-%m-%d")}"""
 
     @tenacity.retry(
         stop=tenacity.stop.stop_after_attempt(10),
@@ -71,7 +67,11 @@ class SampleFetcher:
             "size": self.size,
             "filter": filt,
         }
-        logger.debug(f"Fetching samples", url = {self.full_url if self.full_url is not None else self.base_url}, params = params)
+        logger.debug(
+            "Fetching samples",
+            url={self.full_url if self.full_url is not None else self.base_url},
+            params=params,
+        )
         async with httpx.AsyncClient() as client:
             if self.full_url is not None:
                 response = await client.get(self.full_url, timeout=40)
@@ -105,7 +105,7 @@ class SampleFetcher:
                 else:
                     self.completed()
                     break
-            except KeyError: # no more samples
+            except KeyError:  # no more samples
                 self.completed()
                 break
 
@@ -122,7 +122,12 @@ class SampleFetcher:
             self.samples_buffer.append(sample)
             self.processed_count += 1
             if self.processed_count % 1000 == 0:
-                logger.debug("Fetching samples...", processed_count=self.processed_count, start_date=self.start_date, end_date=self.end_date)
+                logger.debug(
+                    "Fetching samples...",
+                    processed_count=self.processed_count,
+                    start_date=self.start_date,
+                    end_date=self.end_date,
+                )
 
     def completed(self):
         """Finalize the fetching process.
@@ -171,50 +176,57 @@ async def process_by_dates(start_date, end_date, output_directory: str):
     await fetcher.process()
 
     output_path = UPath(output_directory)
-    output_path = output_path / f"year={start_date.year}" / f"month={start_date.month:02d}" / f"day={start_date.day:02d}"
+    output_path = (
+        output_path
+        / f"year={start_date.year}"
+        / f"month={start_date.month:02d}"
+        / f"day={start_date.day:02d}"
+    )
     output_file = output_path / "data_0.parquet"
     output_semaphore = output_path / "data_0.parquet.done"
-    
+
     if output_semaphore.exists():
-        logger.info("Skipping already processed date range: {start_date} to {end_date}", start_date=start_date, end_date=end_date)
+        logger.info(
+            "Skipping already processed date range: {start_date} to {end_date}",
+            start_date=start_date,
+            end_date=end_date,
+        )
         return
 
     with tempfile.TemporaryDirectory() as tmp_dir:
         tmp_filename = f"{tmp_dir}/data_0.parquet"
-        
+
         if fetcher.any_samples:
             # Write samples to Parquet file
             schema = get_biosample_schema()
             table = pa.Table.from_pylist(fetcher.samples_buffer, schema=schema)
-            pq.write_table(
-                table,
-                tmp_filename,
-                compression="zstd",
-                compression_level=9
-            )
-            
+            pq.write_table(table, tmp_filename, compression="zstd", compression_level=9)
 
-            
-            with output_file.open('wb') as f, open(tmp_filename, 'rb') as src:
+            with output_file.open("wb") as f, open(tmp_filename, "rb") as src:
                 shutil.copyfileobj(src, f)
 
             # Move temp file to final location
-            #shutil.move(tmp_filename, final_filename)
+            # shutil.move(tmp_filename, final_filename)
             # Create .done file next to the data file
-            output_semaphore.write_text(f"Processed {fetcher.processed_count} samples\n")
-            logger.info(f"Finished processing {start_date} to {end_date}: {fetcher.processed_count} samples extracted")
+            output_semaphore.write_text(
+                f"Processed {fetcher.processed_count} samples\n"
+            )
+            logger.info(
+                f"Finished processing {start_date} to {end_date}: {fetcher.processed_count} samples extracted"
+            )
         else:
             # No samples found - create .done with special marker
             # Create .done file to mark day as processed (even though no data)
             # This prevents re-checking empty days
             # Write metadata to indicate no samples
             output_semaphore.write_text("NO_SAMPLES\n")
-            logger.info(f"Finished processing {start_date} to {end_date}: No samples found")
+            logger.info(
+                f"Finished processing {start_date} to {end_date}: No samples found"
+            )
         UPath(tmp_filename).unlink(missing_ok=True)
-    
 
 
-async def limited_process(semaphore, start_date, end_date, output_directory: str=''):
+async def limited_process(semaphore, start_date, end_date, output_directory: str = ""):
     """This function is a wrapper around process_by_dates that limits the number of concurrent tasks."""
     async with semaphore:
         await process_by_dates(start_date, end_date, output_directory)
@@ -222,15 +234,14 @@ async def limited_process(semaphore, start_date, end_date, output_directory: str
 
 async def heartbeat(seconds: int = 300):
     """Log heartbeat every 5 minutes to prevent GitHub Actions timeout.
-    
+
     Needed in GitHub Actions to prevent timeouts.
     Github Actions may terminate jobs that do not produce output
-    for a certain period of time (10 minutes). 
+    for a certain period of time (10 minutes).
     """
     while True:
         await anyio.sleep(seconds)  # Sleep for 5 minutes
         logger.info("Heartbeat: EBI Biosample extraction is running.")
-
 
 
 async def main(output_directory: UPath):
@@ -241,26 +252,36 @@ async def main(output_directory: UPath):
     semaphore = anyio.Semaphore(CONCURRENCY_LIMIT)  # Limit to 20 concurrent tasks
 
     logger.info(f"Starting EBI Biosample extraction from {start} to {end}")
-    logger.info(f"Extracting up to yesterday to ensure complete days")
+    logger.info("Extracting up to yesterday to ensure complete days")
     logger.info(f"Output directory: {output_directory}")
 
     async with anyio.create_task_group() as task_group:
         task_group.start_soon(heartbeat, 300)  # Start heartbeat task
         for start_date, end_date in get_date_ranges(start, end):
             output_path = UPath(output_directory)
-            output_path = output_path / f"year={start_date.year}" / f"month={start_date.month:02d}" / f"day={start_date.day:02d}"
-            output_file = output_path / "data_0.parquet"
+            output_path = (
+                output_path
+                / f"year={start_date.year}"
+                / f"month={start_date.month:02d}"
+                / f"day={start_date.day:02d}"
+            )
+            output_path / "data_0.parquet"
             output_semaphore = output_path / "data_0.parquet.done"
-            if not output_semaphore.exists(): # Only process if not already done
+            if not output_semaphore.exists():  # Only process if not already done
                 logger.info(f"Scheduling processing for {start_date} to {end_date}")
-                task_group.start_soon(limited_process, semaphore, start_date, end_date, str(output_directory))
-
-
+                task_group.start_soon(
+                    limited_process,
+                    semaphore,
+                    start_date,
+                    end_date,
+                    str(output_directory),
+                )
 
 
 @click.group()
 def ebi_biosample():
     pass
+
 
 @ebi_biosample.command()
 @click.argument("output_base", required=False, default=None)
@@ -271,8 +292,9 @@ def extract(output_base: str | None):
     organized by daily date ranges.
     """
     from omicidx.etl.config import settings
+
     base = UPath(output_base) if output_base else settings.publish_directory
-    output_dir = base / 'ebi_biosample' / 'raw'
+    output_dir = base / "ebi_biosample" / "raw"
     output_dir.mkdir(parents=True, exist_ok=True)
 
     logger.info(f"Using output directory: {output_dir}")

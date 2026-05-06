@@ -16,12 +16,11 @@ Usage (CLI):
 
 import os
 
-from ..log import logger
-
 import click
 import duckdb
-
 from omicidx.etl.sql import get_sql, list_sql_files
+
+from ..log import logger
 
 
 def get_connection() -> duckdb.DuckDBPyConnection:
@@ -100,11 +99,7 @@ def run_cmd(files: tuple[str, ...]):
 
     # Default to consolidation files only (010_*); view files (020+) are
     # handled by the build-db command.
-    sql_files = (
-        list(files)
-        if files
-        else [f for f in list_sql_files() if f < "020"]
-    )
+    sql_files = list(files) if files else [f for f in list_sql_files() if f < "020"]
     for name in sql_files:
         run_sql_file(name, con=con)
 

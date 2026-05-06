@@ -1,9 +1,10 @@
 # Successfully parse a valid XML element with tag "Package"
 def test_parse_valid_package_element():
+    from io import StringIO
+
     from omicidx.biosample import (
         BioProjectParser,
     )
-    from io import StringIO
 
     # Mock XML content
     xml_content = """<root>

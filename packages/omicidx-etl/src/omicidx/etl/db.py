@@ -1,12 +1,13 @@
-from .config import settings
-import duckdb
 import contextlib
-from pathlib import Path
-from typing import Optional
 import tempfile
+from pathlib import Path
+
+import duckdb
+
+from .config import settings
 
 
-def duckdb_setup_sql(temp_directory: Optional[str] = None):
+def duckdb_setup_sql(temp_directory: str | None = None):
     """
     Generate DuckDB setup SQL with optional custom temp directory.
 
@@ -14,11 +15,13 @@ def duckdb_setup_sql(temp_directory: Optional[str] = None):
         temp_directory: Custom temp directory path. If None, uses /tmp/db_temp
     """
     if temp_directory is None:
-        temp_directory = '/tmp/db_temp'
+        temp_directory = "/tmp/db_temp"
 
-    endpoint = 's3.amazonaws.com'
+    endpoint = "s3.amazonaws.com"
     if settings.AWS_ENDPOINT_URL is not None:
-        endpoint = settings.AWS_ENDPOINT_URL.replace('https://', '').replace('http://', '')
+        endpoint = settings.AWS_ENDPOINT_URL.replace("https://", "").replace(
+            "http://", ""
+        )
 
     return f"""
     INSTALL httpfs;
@@ -37,8 +40,9 @@ def duckdb_setup_sql(temp_directory: Optional[str] = None):
     );
     """
 
+
 @contextlib.contextmanager
-def duckdb_connection(temp_directory: Optional[str] = None):
+def duckdb_connection(temp_directory: str | None = None):
     """
     Create a DuckDB connection with optional custom temp directory.
 
@@ -60,12 +64,16 @@ def duckdb_connection(temp_directory: Optional[str] = None):
         sql = duckdb_setup_sql(temp_directory)
         con.execute(sql)
         yield con
-        
-        
+
+
 if __name__ == "__main__":
     with duckdb_connection() as con:
         # Example usage of the connection
-        result = con.execute("select * from read_parquet('s3://omicidx/sra/raw/study/**/*parquet') limit 10").df()
+        result = con.execute(
+            "select * from read_parquet('s3://omicidx/sra/raw/study/**/*parquet') limit 10"
+        ).df()
         print(result)
-        
-        con.execute("copy (select 1 as abc) to 's3://omicidx/test.parquet' (format parquet);")
+
+        con.execute(
+            "copy (select 1 as abc) to 's3://omicidx/test.parquet' (format parquet);"
+        )

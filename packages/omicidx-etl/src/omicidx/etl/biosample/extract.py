@@ -1,20 +1,22 @@
 """
 Simplified biosample/bioproject extraction without Prefect dependencies.
 """
+
+import gzip
+import shutil
+import tempfile
 import threading
 import time
-import httpx
-import tempfile
-import gzip
-import orjson
-import shutil
-from upath import UPath
-from pathlib import Path
-from omicidx.parsers.biosample import BioSampleParser, BioProjectParser
-import click
-from omicidx.etl.log import get_logger
-import tenacity
 from datetime import datetime
+from pathlib import Path
+
+import click
+import httpx
+import orjson
+import tenacity
+from omicidx.etl.log import get_logger
+from omicidx.parsers.biosample import BioProjectParser, BioSampleParser
+from upath import UPath
 
 from .asset_metadata import AssetMetadata
 
@@ -28,6 +30,7 @@ OUTPUT_SUFFIX = ".jsonl.gz"
 # Heartbeat interval (seconds)
 HEARTBEAT_INTERVAL = 60
 
+
 @tenacity.retry(
     wait=tenacity.wait_exponential(multiplier=1, min=4, max=30),
     retry=tenacity.retry_if_exception_type(httpx.RequestError),
@@ -38,12 +41,14 @@ def url_download(url: str, download_filename: str) -> None:
 
     try:
         logger.info(f"Downloading {url} to {download_filename}")
-        with open(download_filename, "wb") as download_file:
-            with httpx.stream("GET", url, timeout=60) as response:
-                response.raise_for_status()
+        with (
+            open(download_filename, "wb") as download_file,
+            httpx.stream("GET", url, timeout=60) as response,
+        ):
+            response.raise_for_status()
 
-                for chunk in response.iter_bytes():
-                    download_file.write(chunk)
+            for chunk in response.iter_bytes():
+                download_file.write(chunk)
         logger.info(f"Completed download of {url}")
 
     except Exception as e:
@@ -127,9 +132,10 @@ def _extract_entity(
                 tmp_out_path = Path(tmp_out.name)
 
             try:
-                with open_func(downloaded_file.name, mode) as input_file, gzip.open(
-                    tmp_out_path, "wb"
-                ) as out_f:
+                with (
+                    open_func(downloaded_file.name, mode) as input_file,
+                    gzip.open(tmp_out_path, "wb") as out_f,
+                ):
                     # the parser yields dicts unless validate_with_schema=True
                     # we skip validation for performance
                     for obj in parser_class(input_file, validate_with_schema=False):
@@ -156,25 +162,23 @@ def _extract_entity(
         f"Completed {entity} extraction: {obj_counter} records, {len(output_files)} files"
     )
     asset_metadata = AssetMetadata(
-        asset_key = f"src_{entity}",
-        storage_path = str(output_path),
-        upstream_assets = [BIO_SAMPLE_URL if entity == "biosample" else BIO_PROJECT_URL],
-        row_count = obj_counter,
-        format = "jsonl",
-        compression = "gzip",
-        created_at = datetime.now(),
-        size_bytes = output_path.stat().st_size,
-        runtime_seconds = time.time() - start_time,
+        asset_key=f"src_{entity}",
+        storage_path=str(output_path),
+        upstream_assets=[BIO_SAMPLE_URL if entity == "biosample" else BIO_PROJECT_URL],
+        row_count=obj_counter,
+        format="jsonl",
+        compression="gzip",
+        created_at=datetime.now(),
+        size_bytes=output_path.stat().st_size,
+        runtime_seconds=time.time() - start_time,
     )
     return asset_metadata
-        
-
 
 
 def extract_all(output_dir: UPath) -> dict[str, list[UPath]]:
     """Extract both biosample and bioproject."""
     results = {}
-    
+
     for entity_func, entity_name in [
         (extract_bioproject, "bioproject"),
         (extract_biosample, "biosample"),
@@ -194,9 +198,11 @@ def biosample():
 def extract(output_base: str | None):
     """Command-line interface for extraction and optional upload."""
     from omicidx.etl.config import settings
+
     output_path = UPath(output_base) if output_base else settings.publish_directory
     logger.info(f"Starting extraction to {output_path}")
     extract_all(output_path)
+
 
 if __name__ == "__main__":
     extract()
