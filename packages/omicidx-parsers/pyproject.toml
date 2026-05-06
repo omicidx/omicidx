@@ -16,7 +16,6 @@ dependencies = [
     "httpx",
     "pydantic>=2",
     "biopython>=1.81",
-    "pronto>=2.5.4",
     "orjson>=3.9.2",
     "universal-pathlib",
 ]
