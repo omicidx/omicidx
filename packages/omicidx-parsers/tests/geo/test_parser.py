@@ -23,15 +23,14 @@ def test_get_geo_accession_xml():
 
 def test_get_geo_accession_soft():
     res = parser.get_geo_accession_soft(TEST_GSE)
-    # '^SERIES = GSE10\r\n'
-    firstline = next(res)
-    assert isinstance(firstline, str)
+    assert isinstance(res, str)
+    firstline = res.splitlines()[0]
     assert firstline.startswith("^SERIES = ")
 
 
 def test_get_geo_entities():
     res = parser.get_geo_accession_soft(TEST_GSE)
-    txt = res.readlines()
+    txt = res.splitlines()
     entities = parser.get_geo_entities(txt)
     assert isinstance(entities, dict)
     assert len(entities.keys()) == 6
