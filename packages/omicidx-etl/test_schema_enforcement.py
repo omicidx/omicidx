@@ -1,9 +1,9 @@
 from pathlib import Path
 
-from omicidx_etl.biosample.extract import OUTPUT_SUFFIX, cleanup_old_files
-from omicidx_etl.geo.extract import entrezid_to_geo
-from omicidx_etl.sra.mirror import SRAMirrorEntry
-from omicidx_etl.sra.schema import get_pyarrow_schema
+from omicidx.etl.biosample.extract import OUTPUT_SUFFIX, cleanup_old_files
+from omicidx.etl.geo.extract import entrezid_to_geo
+from omicidx.etl.sra.mirror import SRAMirrorEntry
+from omicidx.etl.sra.schema import get_pyarrow_schema
 
 
 def test_sra_mirror_entry_parses_expected_fields():

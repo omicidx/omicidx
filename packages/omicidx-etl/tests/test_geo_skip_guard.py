@@ -15,7 +15,7 @@ months on subsequent runs.
 import gzip
 from datetime import date
 
-import omicidx_etl.geo.extract as geo_extract
+import omicidx.etl.geo.extract as geo_extract
 import pytest
 from anyio import create_memory_object_stream
 from upath import UPath
@@ -27,11 +27,7 @@ from upath import UPath
 
 def _make_paths(tmp_path: UPath, start: date, end: date):
     """Return the three output paths for a month, as local UPaths."""
-    old_output = geo_extract.OUTPUT_PATH
-    geo_extract.OUTPUT_PATH = UPath(tmp_path)
-    gse, gsm, gpl = geo_extract.get_result_paths(start, end)
-    geo_extract.OUTPUT_PATH = old_output
-    return gse, gsm, gpl
+    return geo_extract.get_result_paths(start, end, UPath(tmp_path))
 
 
 # ---------------------------------------------------------------------------
@@ -40,11 +36,10 @@ def _make_paths(tmp_path: UPath, start: date, end: date):
 
 
 def test_get_result_paths_structure(tmp_path):
-    """get_result_paths returns hive-partitioned paths under OUTPUT_PATH."""
-    geo_extract.OUTPUT_PATH = UPath(tmp_path)
+    """get_result_paths returns hive-partitioned paths under output_path."""
     start = date(2023, 4, 1)
     end = date(2023, 4, 30)
-    gse, gsm, gpl = geo_extract.get_result_paths(start, end)
+    gse, gsm, gpl = geo_extract.get_result_paths(start, end, UPath(tmp_path))
 
     assert "gse" in str(gse)
     assert "gsm" in str(gsm)
@@ -69,13 +64,11 @@ async def test_skip_guard_skips_when_any_file_exists(tmp_path, monkeypatch):
     all three files are created on every future run, so the check is
     unambiguous going forward.
     """
-    monkeypatch.setattr(geo_extract, "OUTPUT_PATH", UPath(tmp_path))
-
     # Test with only GSM present (no GSE, no GPL) — common for some months
     start = date(2020, 1, 1)
     end = date(2020, 1, 31)
 
-    _gse, gsm, _gpl = geo_extract.get_result_paths(start, end)
+    _gse, gsm, _gpl = geo_extract.get_result_paths(start, end, UPath(tmp_path))
     gsm.parent.mkdir(parents=True, exist_ok=True)
     gsm.touch()
 
@@ -93,8 +86,6 @@ async def test_skip_guard_skips_when_any_file_exists(tmp_path, monkeypatch):
 @pytest.mark.anyio
 async def test_skip_guard_does_not_skip_when_no_files_exist(tmp_path, monkeypatch):
     """geo_metadata_by_date processes months that have no output files at all."""
-    monkeypatch.setattr(geo_extract, "OUTPUT_PATH", UPath(tmp_path))
-
     start = date(2020, 2, 1)
     end = date(2020, 2, 29)
 
@@ -119,15 +110,13 @@ async def test_skip_guard_does_not_skip_when_no_files_exist(tmp_path, monkeypatc
 
 
 @pytest.mark.anyio
-async def test_write_geo_entity_worker_always_writes_three_files(tmp_path, monkeypatch):
+async def test_write_geo_entity_worker_always_writes_three_files(tmp_path):
     """write_geo_entity_worker writes all 3 output files even when GPL has no records.
 
     Regression test: before the fix, only files with at least one record were
     written.  Months with no GPL updates never got a gpl_path, causing the
     and-based skip guard to reprocess them on every run.
     """
-    monkeypatch.setattr(geo_extract, "OUTPUT_PATH", UPath(tmp_path))
-
     start = date(2021, 3, 1)
     end = date(2021, 3, 31)
 
@@ -138,7 +127,7 @@ async def test_write_geo_entity_worker_always_writes_three_files(tmp_path, monke
 
     await geo_extract.write_geo_entity_worker(receive, start, end, UPath(tmp_path))
 
-    gse, gsm, gpl = geo_extract.get_result_paths(start, end)
+    gse, gsm, gpl = geo_extract.get_result_paths(start, end, UPath(tmp_path))
     assert gse.exists(), "GSE file must always be written"
     assert gsm.exists(), "GSM file must always be written"
     assert gpl.exists(), (
@@ -147,12 +136,8 @@ async def test_write_geo_entity_worker_always_writes_three_files(tmp_path, monke
 
 
 @pytest.mark.anyio
-async def test_write_geo_entity_worker_empty_files_are_valid_gzip(
-    tmp_path, monkeypatch
-):
+async def test_write_geo_entity_worker_empty_files_are_valid_gzip(tmp_path):
     """Files written for empty months are valid (possibly empty) gzip archives."""
-    monkeypatch.setattr(geo_extract, "OUTPUT_PATH", UPath(tmp_path))
-
     start = date(2021, 4, 1)
     end = date(2021, 4, 30)
 
@@ -162,7 +147,7 @@ async def test_write_geo_entity_worker_empty_files_are_valid_gzip(
 
     await geo_extract.write_geo_entity_worker(receive, start, end, UPath(tmp_path))
 
-    gse, gsm, gpl = geo_extract.get_result_paths(start, end)
+    gse, gsm, gpl = geo_extract.get_result_paths(start, end, UPath(tmp_path))
     for path in (gse, gsm, gpl):
         data = path.read_bytes()
         # gzip.decompress should not raise for a valid (even empty) archive
