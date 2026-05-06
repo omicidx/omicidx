@@ -2,7 +2,7 @@
 def test_parse_valid_package_element():
     from io import StringIO
 
-    from omicidx.biosample import (
+    from omicidx.parsers.biosample import (
         BioProjectParser,
     )
 

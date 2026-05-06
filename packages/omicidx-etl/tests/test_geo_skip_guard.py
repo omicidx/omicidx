@@ -15,7 +15,7 @@ months on subsequent runs.
 import gzip
 from datetime import date
 
-import omicidx_etl.geo.extract as geo_extract
+import omicidx.etl.geo.extract as geo_extract
 import pytest
 from anyio import create_memory_object_stream
 from upath import UPath
@@ -27,11 +27,7 @@ from upath import UPath
 
 def _make_paths(tmp_path: UPath, start: date, end: date):
     """Return the three output paths for a month, as local UPaths."""
-    old_output = geo_extract.OUTPUT_PATH
-    geo_extract.OUTPUT_PATH = UPath(tmp_path)
-    gse, gsm, gpl = geo_extract.get_result_paths(start, end)
-    geo_extract.OUTPUT_PATH = old_output
-    return gse, gsm, gpl
+    return geo_extract.get_result_paths(start, end, UPath(tmp_path))
 
 
 # ---------------------------------------------------------------------------

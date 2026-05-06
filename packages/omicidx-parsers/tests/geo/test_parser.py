@@ -2,7 +2,7 @@
 import http
 
 import pydantic
-from omicidx.geo import parser
+from omicidx.parsers.geo import parser
 
 TEST_GSE = "GSE10"
 
