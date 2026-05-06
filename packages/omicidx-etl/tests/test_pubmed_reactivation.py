@@ -1,6 +1,6 @@
 from click.testing import CliRunner
-from omicidx_etl.cli import cli
-from omicidx_etl.etl import pubmed as pubmed_module
+from omicidx.etl import pubmed as pubmed_module
+from omicidx.etl.cli import cli
 from upath import UPath
 
 
