@@ -1,0 +1,113 @@
+digraph G {
+        fontname = "Bitstream Vera Sans"
+        fontsize = 12
+
+        node [
+                fontname = "Bitstream Vera Sans"
+                fontsize = 12
+                shape = "record"
+        ]
+
+        edge [
+                fontname = "Bitstream Vera Sans"
+                fontsize = 10
+        ]
+
+
+        subgraph cluster_1 {
+                label = "SRA"
+		style = "rounded"
+		fontsize = 16
+
+		experiment [
+			    label = "{Experiment|+ accession : string\l+ study_accession : string\l+ sample_accession : string\l| Additional experiment\ details}"
+			    ]
+                sample [
+                        label = "{Sample|+ accession : string\l| Additional sample\ details}"
+			]
+
+                run [
+                        label = "{Run|+ accession : string\l+ experiment_accession : string\l| Additional run\ details}"
+			]
+                study [
+                        label = "{Study|+ accession : string\l| Additional study\ details}"
+			]
+		
+		edge [
+                      arrowhead = "none"
+		      
+                      taillabel = "1..*"
+		      headlabel = "1"
+		      ]
+		
+		experiment -> run
+		study -> experiment
+		sample -> experiment
+        }
+
+	subgraph cluster_2 {
+                label = "BioSample"
+		style = "rounded"
+		fontsize = 16
+
+                biosample [
+                        label = "{BioSample|+ accession : string\l+ gsm : string\l+ dbgap : string\l+sra_sample : string\l| Additional BioSample\ details}"
+			]
+		
+		edge [
+                      arrowhead = "none"
+		      
+                      taillabel = "1..*"
+		      headlabel = "1"
+		      ]
+		
+        }
+
+	subgraph cluster_3 {
+                label = "GEO"
+		style = "rounded"
+		bgcolor = "lightgray"
+		fontsize = 16
+
+                gsm [
+                        label = "{Sample|+ accession : string\l+ gpl : string\l+sra_sample : string\l| Additional sample details}"
+			]
+                gpl [
+                        label = "{Platform|+ accession : string\l+  : string\l+ gse : string\l+ sra_sample : string\l| Additional platform details}"
+			]
+                gse [
+                        label = "{Series|+ accession : string\l+  : string\l+ sra_study : string\l| Additional series details}"
+			]
+		
+		edge [
+                      arrowhead = "none"
+		      
+                      taillabel = "1..*"
+		      headlabel = "1"
+		      ]
+		gsm -> gpl
+
+		edge [
+                      arrowhead = "none"
+		      
+                      taillabel = "1..*"
+		      headlabel = "1..*"
+		      ]
+
+		gpl -> gse
+		gsm -> gse
+        }
+
+	edge [
+              arrowhead = "none"
+	      
+              taillabel = "1"
+	      headlabel = "1"
+	      ]
+
+	biosample -> sample
+	gse -> study
+	gsm -> sample
+	biosample -> gsm
+
+}

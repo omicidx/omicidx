@@ -1,0 +1,40 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: omicidx
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: omicidx
+    spec:
+      containers:
+        - name: omicidx
+          image: seandavi/omicidx
+          imagePullPolicy: "Always"
+          command: [ "/bin/bash", "-c", "--" ]
+          args: [ "while true; do sleep 30; done;" ]
+          resources:
+            requests:
+              memory: "2G"
+              cpu: "800m"
+            limits:
+              memory: "3G"
+          env:
+            - name: GOOGLE_APPLICATION_CREDENTIALS
+              value: /var/secrets/google/key.json
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: google-cloud-key
+              mountPath: /var/secrets/google
+              
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: omicidx-pv-claim
+        # kubectl create secret generic google-cloud-json --from-file=key.json=isb-cgc-01-0006-fc4b4026d179.json
+        - name: google-cloud-key
+          secret:
+            secretName: google-cloud-json
