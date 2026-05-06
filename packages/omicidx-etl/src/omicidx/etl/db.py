@@ -7,6 +7,11 @@ import duckdb
 from .config import settings
 
 
+def _q(value: str) -> str:
+    """Escape a string for safe use in a SQL single-quoted literal."""
+    return value.replace("'", "''")
+
+
 def duckdb_setup_sql(temp_directory: str | None = None):
     """
     Generate DuckDB setup SQL with optional custom temp directory.
@@ -28,14 +33,14 @@ def duckdb_setup_sql(temp_directory: str | None = None):
     LOAD httpfs;
     SET memory_limit='16GB';
     SET preserve_insertion_order=false;
-    SET temp_directory='{temp_directory}';
+    SET temp_directory='{_q(temp_directory)}';
     SET max_temp_directory_size='100GB';
     CREATE SECRET minio (
         TYPE S3,
-        KEY_ID '{settings.AWS_ACCESS_KEY_ID}',
-        SECRET '{settings.AWS_SECRET_ACCESS_KEY}',
-        ENDPOINT '{endpoint}',
-        URL_STYLE '{settings.AWS_URL_STYLE or "path"}',
+        KEY_ID '{_q(settings.AWS_ACCESS_KEY_ID)}',
+        SECRET '{_q(settings.AWS_SECRET_ACCESS_KEY)}',
+        ENDPOINT '{_q(endpoint)}',
+        URL_STYLE '{_q(settings.AWS_URL_STYLE or "path")}',
         USE_SSL 'true'
     );
     """

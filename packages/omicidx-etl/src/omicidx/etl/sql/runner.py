@@ -23,6 +23,11 @@ from omicidx.etl.sql import get_sql, list_sql_files
 from ..log import logger
 
 
+def _q(value: str) -> str:
+    """Escape a string for safe use in a SQL single-quoted literal."""
+    return value.replace("'", "''")
+
+
 def get_connection() -> duckdb.DuckDBPyConnection:
     """Create a DuckDB connection with R2 credentials."""
     con = duckdb.connect()
@@ -37,9 +42,9 @@ def get_connection() -> duckdb.DuckDBPyConnection:
         sql = f"""
 create or replace secret r2 (
     TYPE r2,
-    KEY_ID '{aws_access_key_id}',
-    SECRET '{aws_secret_access_key}',
-    ACCOUNT_ID '{aws_endpoint_url}'
+    KEY_ID '{_q(aws_access_key_id)}',
+    SECRET '{_q(aws_secret_access_key)}',
+    ACCOUNT_ID '{_q(aws_endpoint_url)}'
 );"""
         con.execute(sql)
         logger.info("R2 secret created successfully")
