@@ -12,16 +12,13 @@ keywords = ["genomics", "bioinformatics", "open data", "SRA", "GEO", "biosample"
 dependencies = [
     "requests>=2.22",
     "click",
-    "aiohttp>=3.6.2",
     "tenacity>=8.0.1",
-    "pendulum",
     "httpx",
     "pydantic>=2",
     "biopython>=1.81",
     "pronto>=2.5.4",
     "orjson>=3.9.2",
     "universal-pathlib",
-    "trio>=0.30.0",
 ]
 
 [project.urls]
