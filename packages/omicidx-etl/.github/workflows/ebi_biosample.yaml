@@ -1,0 +1,39 @@
+name: ETL for EBI Biosample
+on:
+  workflow_dispatch:
+  schedule:
+    # Run daily at 6am UTC
+    - cron:  '0 6 * * *'
+
+jobs:
+  run-extraction:
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    runs-on: ubuntu-latest
+    timeout-minutes: 180 # 3 hours
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      AWS_ENDPOINT_URL: ${{ secrets.AWS_ENDPOINT_URL }}
+      AWS_URL_STYLE: ${{ secrets.AWS_URL_STYLE }}
+      PUBLISH_DIRECTORY: ${{ secrets.PUBLISH_DIRECTORY }}
+      PYTHONUNBUFFERED: 1 # Ensure real-time logging output
+      LOGURU_LEVEL: DEBUG
+
+    steps:
+      - uses: 'actions/checkout@v4'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: 3.11
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run extraction
+        run: uv run oidx ebi-biosample extract

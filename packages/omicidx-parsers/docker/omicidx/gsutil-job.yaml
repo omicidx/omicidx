@@ -1,0 +1,33 @@
+# This works
+# Shows an example using a google secret to
+# access google services from kubernetes.
+#
+# To run: kubectl apply -f job3.yaml
+#
+# To see output: kubectl logs job.batch/gsutil-test
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: gsutil-test
+spec:
+  template:
+    metadata:
+      labels:
+        app: gsutil-test
+    spec:
+      volumes:
+      - name: google-cloud-key
+        secret:
+          secretName: google-key
+      containers:
+      - name: subscriber
+        image: google/cloud-sdk:latest
+        command: ['gsutil', 'ls']
+        volumeMounts:
+        - name: google-cloud-key
+          mountPath: /var/secrets/google
+        env:
+        - name: GOOGLE_APPLICATION_CREDENTIALS
+          value: /var/secrets/google/key.json
+      restartPolicy: Never
+  backoffLimit: 4

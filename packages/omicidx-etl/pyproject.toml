@@ -1,0 +1,54 @@
+[project]
+name = "omicidx-etl"
+version = "0.1.0"
+description = "ETL pipelines for OmicIDX — SRA, GEO, Biosample, PubMed, and more"
+authors = [
+    {name = "Sean Davis", email = "seandavi@gmail.com"},
+]
+license = {text = "MIT"}
+requires-python = ">=3.11"
+dependencies = [
+    "universal-pathlib>=0.2.2,<0.3.0",
+    "s3fs>=2023.0.0,<2024.0.0",
+    "orjson>=3.10.3,<4.0.0",
+    "pubmed-parser @ git+https://github.com/seandavi/pubmed_parser",
+    "pydantic-settings>=2.3.3,<3.0.0",
+    "httpx>=0.28.1",
+    "python-dotenv[cli]>=1.1.0",
+    "omicidx-parsers",
+    "pyarrow>=20.0.0",
+    "loguru>=0.7.3",
+    "tqdm[asyncio]>=4.67.1",
+    "polars-lts-cpu>=1.32.3",
+    "pyyaml>=6.0",
+    "click>=8.0.0",
+    "sqlglot>=27.8.0",
+    "duckdb>=1.4.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ipykernel>=6.29.4,<7.0.0",
+]
+
+[project.scripts]
+oidx = "omicidx.etl.cli:cli"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/omicidx"]
+
+[tool.uv.sources]
+omicidx-parsers = { workspace = true }
+
+[dependency-groups]
+dev = [
+    "pydoc-markdown>=4.8.2",
+    "ruff>=0.14.9",
+]

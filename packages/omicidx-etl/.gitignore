@@ -1,0 +1,23 @@
+__pycache__
+.envrc
+.env
+.envrc
+
+# Warehouse configuration with credentials
+warehouse.yml
+
+# Warehouse data files
+omicidx_warehouse.duckdb
+omicidx_warehouse.duckdb.wal
+exports/
+*.duckdb
+*duckdb.tmp/
+*.sqlite
+logs/
+*parquet
+.env.minio
+SRAmetadb.sqlite.gz
+
+# Cloudflare Worker
+worker/node_modules/
+worker/.wrangler/
