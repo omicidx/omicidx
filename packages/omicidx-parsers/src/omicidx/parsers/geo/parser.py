@@ -22,7 +22,7 @@ from tenacity.wait import wait_exponential
 from tenacity.stop import stop_after_attempt
 from urllib.error import HTTPError  # for Python 3
 
-import omicidx.geo.pydantic_models as pydantic_models
+import omicidx.parsers.geo.pydantic_models as pydantic_models
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("omicidx")

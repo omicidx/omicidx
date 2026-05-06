@@ -3,7 +3,7 @@ import urllib.request
 import xml.etree.ElementTree as etree
 import csv
 import io
-import omicidx.sra.parser
+import omicidx.parsers.sra.parser
 
 
 def get_xml_for_accession(accession: str):

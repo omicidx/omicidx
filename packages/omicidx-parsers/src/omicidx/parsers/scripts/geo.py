@@ -1,4 +1,4 @@
-import omicidx.geo.parser as op
+import omicidx.parsers.geo.parser as op
 import click
 import json
 import sys

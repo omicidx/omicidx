@@ -1,7 +1,7 @@
 """Tooling and utilities for working with ontologies
 
 ```
-from omicidx.ontologies.utils import parse_ontology
+from omicidx.parsers.ontologies.utils import parse_ontology
 
 cl = ontology_from_obo_library('cl.obo')
 cl_item = cl['CL:0000900']

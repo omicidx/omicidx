@@ -1,7 +1,7 @@
 import click
-import omicidx.biosample
+import omicidx.parsers.biosample
 from sd_cloud_utils.aws.sqs import SQS
-import omicidx.sra_parsers as sp
+import omicidx.parsers.sra_parsers as sp
 import logging
 import json
 import datetime

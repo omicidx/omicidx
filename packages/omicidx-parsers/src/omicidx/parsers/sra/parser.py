@@ -52,7 +52,7 @@ def parse_xml_file(xmlfilename):
 
     wget --mirror -nH --cut-dirs=3 ftp://ftp.ncbi.nlm.nih.gov/sra/reports/Mirroring/NCBI_SRA_Mirroring_20181027/
 
-    >>> import omicidx.sra_parsers as sp
+    >>> import omicidx.parsers.sra_parsers as sp
     >>> studies = sp.parse_xml_file("NCBI_SRA_Mirroring_20181027/meta_study_set.xml.gz")
     >>> next(studies)
     ...

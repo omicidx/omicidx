@@ -1,50 +1,47 @@
-[tool.dephell.main]
-from = {format = "poetry", path = "pyproject.toml"}
-to = {format = "setuppy", path = "setup.py"}
-
-[tool.poetry]
-name = "omicidx"
-version = "1.16.0"
+[project]
+name = "omicidx-parsers"
+version = "1.17.0"
+description = "Parsers for NCBI SRA, Biosample, and GEO metadata — part of the OmicIDX project"
 readme = "README.md"
-description = """The OmicIDX project collects, reprocesses, and then republishes metadata from multiple public genomics repositories. Included are the NCBI SRA, Biosample, and GEO databases. Publication is via the cloud data warehouse platform Bigquery, a set of performant search and retrieval APIs, and a set of json-format files for easy incorporation into other projects."""
-authors = ["Sean Davis <seandavi@gmail.com>"]
 license = "MIT"
-repository = "https://github.com/omicidx/omicidx-parsers"
-keywords = ["genomics", "bioinformatics", "open data", "API"]
+requires-python = ">=3.9"
+authors = [
+    { name = "Sean Davis", email = "seandavi@gmail.com" },
+]
+keywords = ["genomics", "bioinformatics", "open data", "SRA", "GEO", "biosample"]
 
-[tool.poetry.dependencies]
-python = ">=3.9"
-requests = "^2.22"
-Click = "*"
-aiohttp = "^3.6.2"
-tenacity = "^8.0.1"
+[project.urls]
+Homepage = "https://github.com/omicidx/omicidx"
+Repository = "https://github.com/omicidx/omicidx"
+Issues = "https://github.com/omicidx/omicidx/issues"
+
+[project.dependencies]
+requests = ">=2.22"
+click = "*"
+aiohttp = ">=3.6.2"
+tenacity = ">=8.0.1"
 pendulum = "*"
 httpx = "*"
-pydantic = "^2"
-biopython = "^1.81"
-pronto = "^2.5.4"
-orjson = "^3.9.2"
-pytest = "^7.4.0"
+pydantic = ">=2"
+biopython = ">=1.81"
+pronto = ">=2.5.4"
+orjson = ">=3.9.2"
 universal-pathlib = "*"
-trio = "^0.30.0"
+trio = ">=0.30.0"
 
-[tool.poetry.dev-dependencies]
-rope = "^0.14.0"
-yapf = "^0.28.0"
-pydoc-markdown = "^2.0"
-ipython = "^8.0.1"
-black = "^22.6.0"
-sphinx-click = "^4.3.0"
-sphinx-autodoc-typehints = "^1.19.2"
+[project.optional-dependencies]
+dev = [
+    "mypy>=1.4.1",
+    "pytest>=7.4.0",
+    "lazydocs>=0.4.8",
+]
 
-[tool.poetry.scripts]
-omicidx_tool = 'omicidx.scripts.geo:cli'
-
-[tool.poetry.group.dev.dependencies]
-mypy = "^1.4.1"
-pytest = "^7.4.0"
-lazydocs = "^0.4.8"
+[project.scripts]
+omicidx_tool = "omicidx.parsers.scripts.geo:cli"
 
 [build-system]
-requires = ["poetry>=0.12"]
-build-backend = "poetry.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/omicidx"]

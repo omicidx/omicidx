@@ -3,7 +3,7 @@
 Implemented as an iterator
 
 
->>> import omicidx.biosample as b
+>>> import omicidx.parsers.biosample as b
 >>> for bios in b.BioSampleParser(gzip.open('biosample_set.xml.gz', 'rb')):
 >>>     print(bios.json())
 >>>     print(bios.dict())

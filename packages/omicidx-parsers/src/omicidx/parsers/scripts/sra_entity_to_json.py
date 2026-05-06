@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import argparse
-import omicidx.sra_parsers
+import omicidx.parsers.sra_parsers
 import json
 import logging
 import collections
