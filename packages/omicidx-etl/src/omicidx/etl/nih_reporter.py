@@ -10,7 +10,7 @@ from datetime import datetime
 import click
 from upath import UPath
 
-from omicidx_etl.log import get_logger
+from omicidx.etl.log import get_logger
 
 logger = get_logger(__name__)
 
@@ -317,7 +317,7 @@ def nih_reporter():
 @click.argument('output_base', required=False, default=None)
 def extract(output_base: str | None):
     """Extract data from NIH Reporter."""
-    from omicidx_etl.config import settings
+    from omicidx.etl.config import settings
     base = UPath(output_base) if output_base else settings.publish_directory
     output_dir = base / "nih_reporter" / "raw"
     process_all_entities(output_dir)

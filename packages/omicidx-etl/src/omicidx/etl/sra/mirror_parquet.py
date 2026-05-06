@@ -15,7 +15,7 @@ from xml.etree.ElementTree import ParseError
 from loguru import logger
 from upath import UPath
 
-from omicidx.sra.parser import sra_object_generator
+from omicidx.parsers.sra.parser import sra_object_generator
 from .schema import get_pyarrow_schema
 
 

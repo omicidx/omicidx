@@ -21,7 +21,7 @@ from ..log import logger
 import click
 import duckdb
 
-from omicidx_etl.sql import get_sql, list_sql_files
+from omicidx.etl.sql import get_sql, list_sql_files
 
 
 def get_connection() -> duckdb.DuckDBPyConnection:

@@ -5,7 +5,7 @@ Two groups of SQL files:
   - 020_*-050_*: View definitions (parquet -> DuckDB views, run via `oidx build-db`)
 
 Usage:
-    from omicidx_etl.sql import get_sql, list_sql_files, SQL_DIR
+    from omicidx.etl.sql import get_sql, list_sql_files, SQL_DIR
 
     # Get SQL content by filename
     sql = get_sql("010_raw_to_parquet.sql")

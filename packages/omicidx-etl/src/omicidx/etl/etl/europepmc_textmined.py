@@ -3,7 +3,7 @@ import polars as pl
 import click
 import tenacity
 
-from omicidx_etl.log import get_logger
+from omicidx.etl.log import get_logger
 
 logger = get_logger(__name__)
 
@@ -26,7 +26,7 @@ def europepmc():
 @click.argument('output_base', required=False, default=None)
 def csv_to_parquet(output_base: str | None):
     """Extract Europe PMC text-mined terms to Parquet."""
-    from omicidx_etl.config import settings
+    from omicidx.etl.config import settings
     base = UPath(output_base) if output_base else settings.publish_directory
     textmined_dir = UPath("https://europepmc.org/pub/databases/pmc/TextMinedTerms/")
 

@@ -13,11 +13,11 @@ import gzip
 import httpx
 from anyio import create_memory_object_stream
 from anyio.streams.memory import MemoryObjectSendStream, MemoryObjectReceiveStream
-from omicidx.geo import parser as gp
+from omicidx.parsers.geo import parser as gp
 from tenacity import retry
 import tenacity
 
-from omicidx_etl.log import get_logger
+from omicidx.etl.log import get_logger
 
 logger = get_logger(__name__)
 
@@ -383,7 +383,7 @@ def geo():
 @click.argument("output_base", required=False, default=None)
 def extract(output_base: str | None):
     """Extract GEO metadata."""
-    from omicidx_etl.config import settings
+    from omicidx.etl.config import settings
     base = UPath(output_base) if output_base else settings.publish_directory
     output_path = base / "geo" / "raw"
     logger.info(f"Starting GEO extraction to {output_path}")

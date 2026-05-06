@@ -5,7 +5,7 @@ Provides structured JSON logging in CI environments and human-friendly
 colorized logging for local development.
 
 Usage:
-    from omicidx_etl.log import configure_logging, get_logger, log_duration
+    from omicidx.etl.log import configure_logging, get_logger, log_duration
     
     # Configure once at application startup
     configure_logging()

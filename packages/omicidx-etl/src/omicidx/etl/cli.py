@@ -8,15 +8,15 @@ from dotenv import load_dotenv
 # Load .env file early to ensure AWS credentials are available
 load_dotenv()
 
-from omicidx_etl.biosample.extract import biosample
-from omicidx_etl.etl.europepmc_textmined import europepmc
-from omicidx_etl.etl.icite import icite
-from omicidx_etl.etl.pubmed import pubmed
-from omicidx_etl.geo.extract import geo
-from omicidx_etl.nih_reporter import nih_reporter
-from omicidx_etl.sra.cli import sra
-from omicidx_etl.sql.runner import sql
-from omicidx_etl.build_db import build_db
+from omicidx.etl.biosample.extract import biosample
+from omicidx.etl.etl.europepmc_textmined import europepmc
+from omicidx.etl.etl.icite import icite
+from omicidx.etl.etl.pubmed import pubmed
+from omicidx.etl.geo.extract import geo
+from omicidx.etl.nih_reporter import nih_reporter
+from omicidx.etl.sra.cli import sra
+from omicidx.etl.sql.runner import sql
+from omicidx.etl.build_db import build_db
 
 
 @click.group()

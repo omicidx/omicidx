@@ -6,9 +6,9 @@ from pathlib import Path
 from upath import UPath
 import tempfile
 
-from omicidx_etl.log import get_logger
+from omicidx.etl.log import get_logger
 
-from omicidx_etl.db import duckdb_connection
+from omicidx.etl.db import duckdb_connection
 
 logger = get_logger(__name__)
 
@@ -153,7 +153,7 @@ def icite():
 @click.argument('output_base', required=False, default=None)
 def extract(output_base: str | None):
     """Extract iCite data from Figshare."""
-    from omicidx_etl.config import settings
+    from omicidx.etl.config import settings
     base = UPath(output_base) if output_base else settings.publish_directory
     output_dir = base / "icite" / "raw"
     output_dir.mkdir(parents=True, exist_ok=True)

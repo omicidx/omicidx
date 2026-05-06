@@ -14,7 +14,7 @@ import click
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from omicidx_etl.log import get_logger
+from omicidx.etl.log import get_logger
 
 from .schema import get_biosample_schema
 
@@ -270,7 +270,7 @@ def extract(output_base: str | None):
     Fetches biosample data from EBI API and saves to Parquet format,
     organized by daily date ranges.
     """
-    from omicidx_etl.config import settings
+    from omicidx.etl.config import settings
     base = UPath(output_base) if output_base else settings.publish_directory
     output_dir = base / 'ebi_biosample' / 'raw'
     output_dir.mkdir(parents=True, exist_ok=True)

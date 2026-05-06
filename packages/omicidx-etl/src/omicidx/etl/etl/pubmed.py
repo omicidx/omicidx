@@ -9,7 +9,7 @@ from upath import UPath
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from omicidx_etl.log import get_logger
+from omicidx.etl.log import get_logger
 
 logger = get_logger(__name__)
 
@@ -141,7 +141,7 @@ def extract(output_base: str | None, replace: bool):
 def resolve_output_path(output_base: str | None) -> UPath:
     """Resolve PubMed output path using base-path conventions."""
     if output_base is None:
-        from omicidx_etl.config import settings
+        from omicidx.etl.config import settings
         return settings.publish_directory / "pubmed" / "raw"
     return UPath(output_base) / "pubmed" / "raw"
 

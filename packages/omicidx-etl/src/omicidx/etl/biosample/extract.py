@@ -10,9 +10,9 @@ import orjson
 import shutil
 from upath import UPath
 from pathlib import Path
-from omicidx.biosample import BioSampleParser, BioProjectParser
+from omicidx.parsers.biosample import BioSampleParser, BioProjectParser
 import click
-from omicidx_etl.log import get_logger
+from omicidx.etl.log import get_logger
 import tenacity
 from datetime import datetime
 
@@ -193,7 +193,7 @@ def biosample():
 @click.argument("output_base", required=False, default=None)
 def extract(output_base: str | None):
     """Command-line interface for extraction and optional upload."""
-    from omicidx_etl.config import settings
+    from omicidx.etl.config import settings
     output_path = UPath(output_base) if output_base else settings.publish_directory
     logger.info(f"Starting extraction to {output_path}")
     extract_all(output_path)

@@ -8,7 +8,7 @@ from datetime import date
 
 import click
 
-from omicidx_etl.log import get_logger
+from omicidx.etl.log import get_logger
 
 from .mirror import get_sra_mirror_entries, SRAMirrorEntry
 from .catalog import SRACatalog
@@ -70,7 +70,7 @@ def extract(
 
     Downloads and processes the latest SRA mirror, filtering by date and entity type.
     """
-    from omicidx_etl.config import settings
+    from omicidx.etl.config import settings
     from upath import UPath
 
     log = get_logger(__name__)
@@ -193,7 +193,7 @@ def cleanup(output_base: Optional[str], dry_run: bool):
 
     Removes all entries that are no longer in the current batch.
     """
-    from omicidx_etl.config import settings
+    from omicidx.etl.config import settings
     from upath import UPath
 
     log = get_logger(__name__)

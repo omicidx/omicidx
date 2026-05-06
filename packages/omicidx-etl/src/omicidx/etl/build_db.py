@@ -22,8 +22,8 @@ from pathlib import Path
 import click
 import duckdb
 
-from omicidx_etl.sql import get_sql, list_sql_files
-from omicidx_etl.log import logger
+from omicidx.etl.sql import get_sql, list_sql_files
+from omicidx.etl.log import logger
 
 DB_FILE = "omicidx.duckdb"
 
