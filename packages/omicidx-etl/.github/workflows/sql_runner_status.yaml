@@ -1,0 +1,50 @@
+name: SQL Runner Status
+
+on:
+  workflow_dispatch:
+    inputs:
+      status:
+        description: 'Run status (success or failure)'
+        required: true
+        type: string
+      duration:
+        description: 'Run duration'
+        required: true
+        type: string
+      timestamp:
+        description: 'Run start timestamp (UTC)'
+        required: true
+        type: string
+      details:
+        description: 'Additional details'
+        required: false
+        type: string
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Describe
+        run: |
+          echo "This workflow is triggered by the completion of"
+          echo "an external runner. The workflow result here is"
+          echo "just to add observability for the external workflow."
+    
+      - name: Report SQL Runner Status
+        run: |
+          echo "## SQL Runner Status Report" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ inputs.status }}" = "success" ]; then
+            echo "**Status:** :white_check_mark: Success" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "**Status:** :x: Failure" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "**Started:** ${{ inputs.timestamp }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Duration:** ${{ inputs.duration }}" >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "${{ inputs.details }}" ]; then
+            echo "**Details:** ${{ inputs.details }}" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Fail if SQL runner failed
+        if: ${{ inputs.status != 'success' }}
+        run: exit 1

@@ -1,0 +1,50 @@
+[project]
+name = "omicidx-gh-etl"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "Sean Davis", email = "seandavi@gmail.com"},
+]
+license = {text = "MIT"}
+requires-python = ">=3.11"
+dependencies = [
+    "universal-pathlib>=0.2.2,<0.3.0",
+    "s3fs >=2023.0.0,<2024.0.0",
+    "orjson >=3.10.3,<4.0.0",
+    "pubmed-parser @ git+https://github.com/seandavi/pubmed_parser",
+    "pydantic-settings>=2.3.3,<3.0.0",
+    "httpx>=0.28.1",
+    "python-dotenv[cli]>=1.1.0",
+    "omicidx>=1.15.0",
+    "pyarrow>=20.0.0",
+    "loguru>=0.7.3",
+    "tqdm[asyncio]>=4.67.1",
+    "polars-lts-cpu>=1.32.3",
+    "pyyaml>=6.0",
+    "click>=8.0.0",
+    "sqlglot>=27.8.0",
+    "duckdb>=1.4.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ipykernel >=6.29.4,<7.0.0",
+]
+
+[project.scripts]
+oidx = "omicidx_etl.cli:cli"
+
+[build-system]
+requires = ["poetry-core>=1.5.0"] # Ensures poetry-core reads from [project]
+build-backend = "poetry.core.masonry.api"
+
+# This minimal [tool.poetry] section tells poetry-core where to find the local package(s).
+# All other metadata and dependencies are now in the [project] section.
+[tool.poetry]
+packages = [{include = "omicidx_etl"}]
+
+[dependency-groups]
+dev = [
+    "pydoc-markdown>=4.8.2",
+    "ruff>=0.14.9",
+]

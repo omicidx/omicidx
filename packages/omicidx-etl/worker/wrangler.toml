@@ -1,0 +1,11 @@
+name = "omicidx-data"
+main = "src/index.ts"
+compatibility_date = "2025-03-14"
+
+[[r2_buckets]]
+binding = "DATA_BUCKET"
+bucket_name = "omicidx"
+
+[[analytics_engine_datasets]]
+binding = "USAGE"
+dataset = "omicidx_usage"

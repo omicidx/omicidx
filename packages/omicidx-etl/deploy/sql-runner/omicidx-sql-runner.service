@@ -1,0 +1,15 @@
+[Unit]
+Description=OmicIDX Daily SQL Runner
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+Environment=PATH=/home/davsean/.local/bin:/usr/local/bin:/usr/bin:/bin
+WorkingDirectory=/home/davsean/Documents/git/omicidx-etl
+EnvironmentFile=/home/davsean/.config/omicidx/env
+ExecStart=/home/davsean/Documents/git/omicidx-etl/deploy/sql-runner/run-and-report.sh
+TimeoutStartSec=18000
+
+[Install]
+WantedBy=default.target
