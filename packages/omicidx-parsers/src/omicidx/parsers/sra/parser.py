@@ -77,15 +77,17 @@ def parse_xml_file(xmlfilename):
     if "study" in xmlfilename:
         entity = "STUDY"
         sra_parser = SRAStudyRecord
-    if "run" in xmlfilename:
+    elif "run" in xmlfilename:
         entity = "RUN"
         sra_parser = SRARunRecord
-    if "sample" in xmlfilename:
+    elif "sample" in xmlfilename:
         entity = "SAMPLE"
         sra_parser = SRASampleRecord
-    if "experiment" in xmlfilename:
+    elif "experiment" in xmlfilename:
         entity = "EXPERIMENT"
         sra_parser = SRAExperimentRecord
+    else:
+        raise ValueError(f"Cannot infer SRA entity type from filename: {xmlfilename}")
     n = 0
     open_func = gzip.open if xmlfilename.endswith(".gz") else open
     with open_func(xmlfilename) as f:
@@ -196,7 +198,7 @@ def parse_run(xml: etree.Element) -> dict:
     for k in ["total_spots", "total_bases", "size"]:
         with contextlib.suppress(KeyError, ValueError, TypeError):
             d[k] = int(d[k])
-    with contextlib.suppress(BaseException):
+    with contextlib.suppress(Exception):
         d["avg_length"] = float(d["total_bases"]) / d["total_spots"]
     path_map = {
         "experiment_accession": ("EXPERIMENT_REF", "accession"),
@@ -207,7 +209,6 @@ def parse_run(xml: etree.Element) -> dict:
     # d = try_update(d, _parse_run_reads(xml.find(".//SPOT_DESCRIPTOR")))
     d.update(_process_path_map(xml, path_map))
     d.update(_parse_identifiers(xml.find("IDENTIFIERS"), "run"))
-    d = try_update(d, _parse_attributes(xml.find("RUN_ATTRIBUTES")))
     d = try_update(d, _parse_attributes(xml.find("RUN_ATTRIBUTES")))
     d = try_update(d, _parse_run_files(xml.find("SRAFiles")))
     d = try_update(d, _parse_run_stats(xml.find("Statistics")))
@@ -396,13 +397,13 @@ def _parse_run_reads(node: etree.Element | None) -> dict:
 
     for read in readrecs:
         r = {}
-        with contextlib.suppress(BaseException):
+        with contextlib.suppress(Exception):
             r["read_index"] = int(read.find("./READ_INDEX").text)
-        with contextlib.suppress(BaseException):
+        with contextlib.suppress(Exception):
             r["read_class"] = read.find("./READ_CLASS").text
-        with contextlib.suppress(BaseException):
+        with contextlib.suppress(Exception):
             r["read_type"] = read.find("./READ_TYPE").text
-        with contextlib.suppress(BaseException):
+        with contextlib.suppress(Exception):
             r["base_coord"] = int(read.find("./BASE_COORD").text)
         d["reads"].append(r)
 
@@ -415,7 +416,7 @@ def _parse_run_qualities(node: etree.Element) -> dict:
     d["qualities"] = []
     qualrecs = node.findall(".//Quality")
     for qual in qualrecs:
-        with contextlib.suppress(BaseException):
+        with contextlib.suppress(Exception):
             d["qualities"].append(
                 {"quality": int(qual.get("value")), "count": int(qual.get("count"))}
             )
@@ -678,9 +679,7 @@ class SRAXMLRecord:
         self.parse_xml()
 
     def parse_xml(self):
-        d = {}
-        d = d.update(self.xml.attrib)
-        self.data = d
+        self.data = dict(self.xml.attrib)
 
 
 class SRAExperimentRecord(SRAXMLRecord):

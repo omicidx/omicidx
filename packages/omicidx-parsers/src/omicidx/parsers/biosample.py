@@ -2,11 +2,10 @@
 
 Implemented as an iterator
 
-
 >>> import omicidx.parsers.biosample as b
 >>> for bios in b.BioSampleParser(gzip.open('biosample_set.xml.gz', 'rb')):
->>>     print(bios.json())
->>>     print(bios.dict())
+...     print(bios.model_dump_json())
+...     print(bios.model_dump())
 """
 
 import datetime
@@ -19,38 +18,39 @@ import pydantic
 
 
 class IdRecs(pydantic.BaseModel):
-    db: str | None
-    label: str | None
-    id: str | None
+    db: str | None = None
+    label: str | None = None
+    id: str | None = None
 
 
 class AttrRecs(pydantic.BaseModel):
-    attribute_name: str | None
-    display_name: str | None
-    harmonized_name: str | None
-    value: str | None
-    unit: str | None
+    attribute_name: str | None = None
+    display_name: str | None = None
+    harmonized_name: str | None = None
+    value: str | None = None
+    unit: str | None = None
 
 
 class BioSample(pydantic.BaseModel):
     accession: str
     id: str
-    title: str | None
-    description: str | None
-    taxonomy_name: str
-    taxon_id: int
-    attribute_recs: list[AttrRecs]
-    attributes: list[str]
-    model: str | None
-    id_recs: list[IdRecs]
-    ids: list[str]
-    sra_sample: str | None
-    dbgap: str | None
-    gsm: str | None
-    publication_date: datetime.datetime | None
-    last_update: datetime.datetime | None
-    submission_date: datetime.datetime | None
-    access: str | None
+    title: str | None = None
+    description: str | None = None
+    taxonomy_name: str | None = None
+    taxon_id: int | None = None
+    attribute_recs: list[AttrRecs] = []
+    attributes: list[str] = []
+    model: str | None = None
+    id_recs: list[IdRecs] = []
+    ids: list[str] = []
+    sra_sample: str | None = None
+    dbgap: str | None = None
+    gsm: str | None = None
+    publication_date: datetime.datetime | None = None
+    last_update: datetime.datetime | None = None
+    submission_date: datetime.datetime | None = None
+    access: str | None = None
+    is_reference: str | None = None
 
 
 class SimplePublication(pydantic.BaseModel):
@@ -73,13 +73,13 @@ class LocusTag(pydantic.BaseModel):
 
 class BioProject(pydantic.BaseModel):
     data_types: list[str] = []
-    description: str | None
+    description: str | None = None
     accession: str
-    name: str | None
+    name: str | None = None
     publications: list[SimplePublication] = []
-    title: str | None
+    title: str | None = None
     external_links: list[ExternalLink] = []
-    release_date: str | None
+    release_date: str | None = None
     locus_tags: list[LocusTag] = []
 
 
@@ -136,12 +136,16 @@ class BioSampleParser:
                 bios["title"] = elem.findtext(".//Description/Title")
                 bios["description"] = elem.findtext(".//Description/Comment/Paragraph")
                 organism = elem.find(".//Organism")
-                bios["taxonomy_name"] = organism.get("taxonomy_name")
-                bios["taxon_id"] = int(organism.get("taxonomy_id"))
+                bios["taxonomy_name"] = (
+                    organism.get("taxonomy_name") if organism is not None else None
+                )
+                bios["taxon_id"] = (
+                    int(organism.get("taxonomy_id")) if organism is not None else None
+                )
                 bios["attribute_recs"] = []
                 bios["attributes"] = []
                 for attribute in elem.findall(".//Attribute"):
-                    attrec = attribute.attrib
+                    attrec = dict(attribute.attrib)
                     attrec["value"] = attribute.text
                     bios["attribute_recs"].append(attrec)
                     try:
