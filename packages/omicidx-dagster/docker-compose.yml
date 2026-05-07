@@ -26,6 +26,8 @@ services:
       S3_URL_STYLE: ${S3_URL_STYLE:-path}
       # OmicIDX publish root
       PUBLISH_ROOT: ${PUBLISH_ROOT:-s3://omicidx}
+      # PostgreSQL for API serving (omicidx database)
+      POSTGRES_URI: ${POSTGRES_URI:-postgresql://omicidx@pg_duckdb_18:5432/omicidx}
       # PubMed sensor lists thousands of files; allow more time
       DAGSTER_SENSOR_GRPC_TIMEOUT: "300"
     command:

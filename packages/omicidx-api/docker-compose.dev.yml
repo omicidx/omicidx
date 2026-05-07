@@ -1,0 +1,33 @@
+# Development mode - bind mount source code for live reload
+#
+# Usage:
+#   docker compose -f docker-compose.dev.yml build
+#   docker compose -f docker-compose.dev.yml up
+
+services:
+  omicidx-api-dev:
+    build:
+      context: ../..
+      dockerfile: packages/omicidx-api/Dockerfile
+    container_name: omicidx-api-dev
+    ports:
+      - "8000:8000"
+    networks:
+      - pg_and_duckdb_default
+    environment:
+      OMICIDX_API_DATABASE_URL: ${POSTGRES_URI:-postgresql://omicidx@pg_duckdb_18:5432/omicidx}
+    volumes:
+      - ./src/omicidx/api:/app/packages/omicidx-api/src/omicidx/api
+      - ./.env:/app/packages/omicidx-api/.env:ro
+    command:
+      - uvicorn
+      - omicidx.api.main:app
+      - --host
+      - "0.0.0.0"
+      - --port
+      - "8000"
+      - --reload
+
+networks:
+  pg_and_duckdb_default:
+    external: true

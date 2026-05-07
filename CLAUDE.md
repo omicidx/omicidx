@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repo structure
 
-This is a **uv workspace** consolidating three packages:
+This is a **uv workspace** consolidating four packages:
 
 ```
 omicidx/                        # workspace root (no package of its own)
@@ -13,11 +13,15 @@ omicidx/                        # workspace root (no package of its own)
 └── packages/
     ├── omicidx-parsers/        # XML parsers + Pydantic models for NCBI SRA, GEO, BioSample
     │   └── src/omicidx/parsers/
-    └── omicidx-etl/            # ETL pipelines that extract raw data to S3/R2 as Parquet
-        └── src/omicidx/etl/
+    ├── omicidx-etl/            # ETL pipelines that extract raw data to S3/R2 as Parquet
+    │   └── src/omicidx/etl/
+    ├── omicidx-dagster/        # Dagster code location for ETL orchestration + postgres loads
+    │   └── src/omicidx/dagster/
+    └── omicidx-api/            # Read-only FastAPI REST API backed by PostgreSQL
+        └── src/omicidx/api/
 ```
 
-Both packages share the `omicidx` **namespace package** (PEP 420 implicit — no `__init__.py` at `src/omicidx/`). `omicidx-etl` depends on `omicidx-parsers` as a workspace-local reference (`tool.uv.sources`).
+All packages share the `omicidx` **namespace package** (PEP 420 implicit — no `__init__.py` at `src/omicidx/`). `omicidx-etl` depends on `omicidx-parsers` as a workspace-local reference (`tool.uv.sources`).
 
 ## Commands
 
@@ -30,6 +34,7 @@ uv sync
 # Run tests (parsers has network-hitting tests against live NCBI APIs)
 uv run pytest packages/omicidx-parsers/tests/
 uv run pytest packages/omicidx-etl/tests/
+uv run pytest packages/omicidx-api/tests/
 
 # Run a single test file
 uv run pytest packages/omicidx-parsers/tests/geo/test_parser.py
@@ -83,14 +88,39 @@ SQL files in `packages/omicidx-etl/src/omicidx/etl/sql/` define a two-stage Duck
 - `010_raw_to_parquet.sql` — raw data consolidation (run via `oidx sql run`)
 - `020_`–`050_*.sql` — view definitions (`src_*`, `stg_*`, `geometadb.*`, `sradb.*`) built by `oidx build-db`
 
+### omicidx-api
+
+Read-only REST API for entity lookups, deployed at `api-omicidx.cancerdatasci.org`. Key modules:
+
+- `omicidx.api.main` — FastAPI app, lifespan, middleware registration
+- `omicidx.api.models.tables` — SQLAlchemy 2.0 ORM models (BioProject, BioSample, SRA, GEO, PubMed)
+- `omicidx.api.routers` — endpoint routers per entity type
+- `omicidx.api.pagination` — base64url keyset cursor encode/decode
+- `omicidx.api.schemas.envelope` — consistent response envelope (data, meta, links, relationships)
+- `omicidx.api.config` — pydantic-settings with `OMICIDX_API_` env prefix
+
+Configuration via `OMICIDX_API_DATABASE_URL` (standard `postgresql://` URI, `+asyncpg` added internally).
+
+### omicidx-dagster
+
+Dagster code location orchestrating ETL pipelines. See `packages/omicidx-dagster/` for details. Key resources:
+
+- `OmicidxStorage` — R2/S3 paths via UPath (`get_upath()`) or DuckDB (`get_duckdb_path()`)
+- `DuckDBResource` — DuckDB connections with R2 credentials
+- `PostgresResource` — PostgreSQL via `POSTGRES_URI` env var; provides `execute_sql()` (asyncpg DDL) and `attach()` (DuckDB postgres_scanner)
+
 ### Data flow
 
 ```
-NCBI FTP/API → omicidx-parsers (XML → Pydantic) → omicidx-etl (→ Parquet on S3/R2)
+NCBI FTP/API → omicidx-parsers (XML → Pydantic) → omicidx-dagster (→ Parquet on S3/R2)
                                                          ↓
                                               DuckDB views (010–050 SQL)
                                                          ↓
                                          omicidx.duckdb (public data file)
+                                                         ↓
+                                              PostgreSQL (via Dagster assets)
+                                                         ↓
+                                         omicidx-api (FastAPI REST endpoints)
 ```
 
 ### GitHub Actions

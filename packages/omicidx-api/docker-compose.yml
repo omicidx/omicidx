@@ -1,0 +1,31 @@
+services:
+  omicidx-api:
+    build:
+      context: ../..
+      dockerfile: packages/omicidx-api/Dockerfile
+    container_name: omicidx-api
+    restart: unless-stopped
+    networks:
+      - proxy
+      - pg_and_duckdb_default
+    environment:
+      OMICIDX_API_DATABASE_URL: ${POSTGRES_URI:-postgresql://omicidx@pg_duckdb_18:5432/omicidx}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.omicidx-api.rule=Host(`api-omicidx.cancerdatasci.org`)"
+      - "traefik.http.routers.omicidx-api.entrypoints=websecure"
+      - "traefik.http.routers.omicidx-api.tls=true"
+      - "traefik.http.routers.omicidx-api.tls.certresolver=cloudflare"
+      - "traefik.http.services.omicidx-api.loadbalancer.server.port=8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/v1/health')"]
+      interval: 30s
+      timeout: 5s
+      start_period: 5s
+      retries: 3
+
+networks:
+  proxy:
+    external: true
+  pg_and_duckdb_default:
+    external: true
