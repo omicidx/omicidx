@@ -1,0 +1,24 @@
+[project]
+name = "omicidx-api"
+version = "0.1.0"
+description = "Read-only REST API for OmicIDX entity lookups"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.34",
+    "sqlalchemy[asyncio]>=2.0",
+    "asyncpg>=0.30",
+    "pydantic>=2",
+    "pydantic-settings>=2",
+    "orjson>=3.9",
+    "loguru>=0.7",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/omicidx"]
+
+[tool.uv.sources]

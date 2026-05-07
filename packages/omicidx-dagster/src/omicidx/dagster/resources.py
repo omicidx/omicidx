@@ -1,8 +1,14 @@
 """Dagster resources for OmicIDX storage configuration."""
 
-import dagster as dg
+import asyncio
+from contextlib import contextmanager
+
 import duckdb
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import create_async_engine
 from upath import UPath
+
+import dagster as dg
 
 
 class OmicidxStorage(dg.ConfigurableResource):
@@ -32,8 +38,13 @@ class OmicidxStorage(dg.ConfigurableResource):
         }
 
     def get_upath(self, *parts: str) -> UPath:
-        """Build a UPath under the publish root."""
+        """Build a UPath under the publish root (for fsspec/UPath operations)."""
         return UPath(self.publish_root, *parts, **self.storage_options)
+
+    def get_duckdb_path(self, *parts: str) -> str:
+        """Build an r2:// path for use in DuckDB SQL with an R2-type secret."""
+        upath = UPath(self.publish_root, *parts)
+        return str(upath).replace("s3://", "r2://", 1)
 
 
 class DuckDBResource(dg.ConfigurableResource):
@@ -64,3 +75,42 @@ class DuckDBResource(dg.ConfigurableResource):
         );"""
         con.execute(sql)
         return con
+
+
+class PostgresResource(dg.ConfigurableResource):
+    """Resource for PostgreSQL connectivity.
+
+    Set POSTGRES_URI in the environment, e.g.:
+        postgresql://omicidx:secret@pg_duckdb_18:5432/omicidx
+    """
+
+    uri: str = dg.EnvVar("POSTGRES_URI")
+
+    @property
+    def async_uri(self) -> str:
+        """Convert standard postgresql:// to asyncpg driver URI."""
+        return self.uri.replace("postgresql://", "postgresql+asyncpg://", 1)
+
+    def execute_sql(self, *statements: str) -> None:
+        """Run raw SQL statements against Postgres via SQLAlchemy async + asyncpg."""
+
+        async def _run():
+            engine = create_async_engine(self.async_uri)
+            async with engine.begin() as conn:
+                for stmt in statements:
+                    await conn.execute(text(stmt))
+            await engine.dispose()
+
+        asyncio.run(_run())
+
+    @contextmanager
+    def attach(self, con: duckdb.DuckDBPyConnection, schema: str = "public"):
+        """Attach this Postgres database to a DuckDB connection."""
+        con.execute("INSTALL postgres; LOAD postgres;")
+        con.execute(
+            f"ATTACH '{self.uri}' AS pg (TYPE POSTGRES, SCHEMA '{schema}')"
+        )
+        try:
+            yield
+        finally:
+            con.execute("DETACH pg")

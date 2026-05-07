@@ -7,14 +7,27 @@ from dotenv import load_dotenv
 # Load .env from the omicidx-dagster package directory
 load_dotenv(Path(__file__).resolve().parents[3] / ".env", override=False)
 
-import dagster as dg  # noqa: E402
+from omicidx.dagster.defs.biosample import (  # noqa: E402
+    bioproject_parquet,
+    bioproject_raw,
+    biosample_raw,
+)
+from omicidx.dagster.defs.geo import (  # noqa: E402
+    geo_monthly_partitions,
+    geo_raw,
+    geo_rna_seq_counts,
+)
+from omicidx.dagster.defs.postgres import bioproject_postgres  # noqa: E402
+from omicidx.dagster.defs.pubmed import pubmed_raw, pubmed_sensor  # noqa: E402
+from omicidx.dagster.defs.sql import consolidated_parquet, omicidx_duckdb  # noqa: E402
+from omicidx.dagster.defs.sra import sra_mirror_listing, sra_raw  # noqa: E402
+from omicidx.dagster.resources import (  # noqa: E402
+    DuckDBResource,
+    OmicidxStorage,
+    PostgresResource,
+)
 
-from omicidx.dagster.defs.biosample import bioproject_parquet, bioproject_raw, biosample_raw
-from omicidx.dagster.defs.geo import geo_monthly_partitions, geo_raw, geo_rna_seq_counts
-from omicidx.dagster.defs.pubmed import pubmed_raw, pubmed_sensor
-from omicidx.dagster.defs.sql import consolidated_parquet, omicidx_duckdb
-from omicidx.dagster.defs.sra import sra_mirror_listing, sra_raw
-from omicidx.dagster.resources import DuckDBResource, OmicidxStorage
+import dagster as dg  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Schedules
@@ -65,11 +78,14 @@ defs = dg.Definitions(
         # SQL
         consolidated_parquet,
         omicidx_duckdb,
+        # Postgres (API serving)
+        bioproject_postgres,
     ],
     schedules=[daily_extract_schedule, daily_geo_schedule],
     sensors=[pubmed_sensor],
     resources={
         "storage": OmicidxStorage(),
         "duckdb_res": DuckDBResource(),
+        "postgres": PostgresResource(),
     },
 )

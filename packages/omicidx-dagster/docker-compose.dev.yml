@@ -32,6 +32,8 @@ services:
       S3_URL_STYLE: ${S3_URL_STYLE:-path}
       # OmicIDX publish root (default to local for dev)
       PUBLISH_ROOT: ${PUBLISH_ROOT:-/tmp/omicidx-dev}
+      # PostgreSQL for API serving (omicidx database)
+      POSTGRES_URI: ${POSTGRES_URI:-postgresql://omicidx@pg_duckdb_18:5432/omicidx}
       # PubMed sensor timeout
       DAGSTER_SENSOR_GRPC_TIMEOUT: "300"
       # Enable debug logging

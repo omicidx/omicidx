@@ -175,10 +175,9 @@ def bioproject_parquet(
     duckdb_res: DuckDBResource,
 ) -> dg.MaterializeResult:
     """Convert BioProject JSONL to Parquet using DuckDB."""
-    input_path = storage.get_upath("bioproject", "raw", "data.jsonl.gz")
-    output_path = storage.get_upath("bioproject", "parquet", "bioprojects.parquet")
+    input_path = storage.get_duckdb_path("bioproject", "raw", "data.jsonl.gz")
+    output_path = storage.get_duckdb_path("bioproject", "parquet", "bioprojects.parquet")
 
-    # DuckDB will use the R2 secret configured in the resource to access these paths
     sql = f"""
         COPY (
             SELECT
@@ -208,7 +207,7 @@ def bioproject_parquet(
     return dg.MaterializeResult(
         metadata={
             "row_count": dg.MetadataValue.int(row_count),
-            "output_path": dg.MetadataValue.text(str(output_path)),
-            "input_path": dg.MetadataValue.text(str(input_path)),
+            "output_path": dg.MetadataValue.text(output_path),
+            "input_path": dg.MetadataValue.text(input_path),
         }
     )
