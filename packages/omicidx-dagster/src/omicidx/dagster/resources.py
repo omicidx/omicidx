@@ -1,7 +1,9 @@
 """Dagster resources for OmicIDX storage configuration."""
 
 import asyncio
+import re
 from contextlib import contextmanager
+from urllib.parse import urlparse
 
 import duckdb
 from sqlalchemy import text
@@ -106,6 +108,14 @@ class PostgresResource(dg.ConfigurableResource):
     @contextmanager
     def attach(self, con: duckdb.DuckDBPyConnection, schema: str = "public"):
         """Attach this Postgres database to a DuckDB connection."""
+        parsed = urlparse(self.uri)
+        if parsed.scheme != "postgresql" or not parsed.hostname:
+            raise ValueError("POSTGRES_URI must be a valid postgresql:// URI")
+        if any(ch in self.uri for ch in ("'", ";", "\n", "\r", "\x00")):
+            raise ValueError("POSTGRES_URI contains unsupported characters")
+        if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", schema):
+            raise ValueError("Schema name must be a valid SQL identifier")
+
         def _q(value: str) -> str:
             return value.replace("'", "''")
 
