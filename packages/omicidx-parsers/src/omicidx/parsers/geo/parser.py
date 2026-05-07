@@ -12,11 +12,11 @@ import logging
 import re
 import urllib
 from io import StringIO
-from urllib.error import HTTPError  # for Python 3
 
 import httpx
 import omicidx.parsers.geo.pydantic_models as pydantic_models
 from Bio import Entrez
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("omicidx")
@@ -84,39 +84,27 @@ def get_geo_accessions(
     logging.info(f"found {count} records for {etyp} database")
     n = 0
     for start in range(0, count, batch_size):
-        min(count, start + batch_size)
-        attempt = 0
-        fetch_handle = None
-        while attempt < 10:
-            attempt += 1
-            try:
-                fetch_handle = entrez.esummary(
-                    db="gds",
-                    rettype="acc",
-                    retmode="xml",
-                    retstart=start,
-                    retmax=batch_size,
-                    webenv=webenv,
-                    query_key=query_key,
-                )
-                for g in entrez.read(fetch_handle):
-                    n += 1
-                    yield (g["Accession"])
 
-                break
-            except (HTTPError, RuntimeError) as err:
-                import time
+        @retry(
+            wait=wait_exponential(multiplier=1, min=1, max=60),
+            stop=stop_after_attempt(10),
+            reraise=True,
+        )
+        def _fetch_batch(retstart=start):
+            handle = entrez.esummary(
+                db="gds",
+                rettype="acc",
+                retmode="xml",
+                retstart=retstart,
+                retmax=batch_size,
+                webenv=webenv,
+                query_key=query_key,
+            )
+            return list(entrez.read(handle))
 
-                if isinstance(err, HTTPError):
-                    logging.error(f"Received error from server {err}")
-                    logging.error(f"Attempt {attempt} of 10")
-                    time.sleep(1 * attempt * attempt)
-                else:
-                    logging.error(f"RuntimeError received: {err}")
-                    logging.error(f"Attempt {attempt} of 10")
-                    time.sleep(1)
-            else:
-                raise
+        for g in _fetch_batch():
+            n += 1
+            yield g["Accession"]
 
 
 def get_geo_accession_xml(accession, targ="all", view="brief"):
@@ -137,18 +125,16 @@ def get_geo_accession_xml(accession, targ="all", view="brief"):
     >>> handle.readlines()
     """
     url = f"https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?targ={targ}&acc={accession}&form=xml&view={view}"
-    attempt = 0
-    while attempt < 10:
-        attempt += 1
-        try:
-            return urllib.request.urlopen(url)
-            break
-        except Exception as err:
-            print(f"Received error from server {err}")
-            print(f"Attempt {attempt} of 3")
-            import time
 
-            time.sleep(1 * attempt)
+    @retry(
+        wait=wait_exponential(multiplier=1, min=1, max=60),
+        stop=stop_after_attempt(10),
+        reraise=True,
+    )
+    def _fetch():
+        return urllib.request.urlopen(url)
+
+    return _fetch()
 
 
 def get_geo_accession_soft(
@@ -173,16 +159,17 @@ def get_geo_accession_soft(
     logging.info(f"Accessing accession {accession} in SOFT format")
     url = f"https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?targ={targ}&acc={accession}&form=text&view={view}"
 
-    # @retry(
-    #     wait=wait_exponential(multiplier=1, min=10, max=60), stop=stop_after_attempt(30)
-    # )
-    def _perform_get(url: str) -> str:
+    @retry(
+        wait=wait_exponential(multiplier=1, min=10, max=60),
+        stop=stop_after_attempt(30),
+        reraise=True,
+    )
+    def _fetch() -> str:
         resp = httpx.get(url, timeout=120)
         resp.raise_for_status()
         return resp.text
 
-    res = _perform_get(url)
-    return res
+    return _fetch()
 
 
 def _split_on_first_equal(line, val="="):
@@ -595,7 +582,7 @@ def gse_to_json(gse):
     """
     res = []
     for z in geo_entity_iterator(gse):
-        res.append(z.json())
+        res.append(z.model_dump_json())
     return "\n".join(res)
 
 
