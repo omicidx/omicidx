@@ -5,6 +5,7 @@ import aioboto3
 import httpx
 import polars as pl
 import pyarrow.parquet as pq
+from loguru import logger
 from tqdm.asyncio import tqdm
 
 SESSION = aioboto3.Session()
@@ -31,7 +32,7 @@ async def fetch_object(httpx_client: httpx.AsyncClient, bucket, key):
             "text": body.decode("utf-8", errors="replace"),
         }
     except Exception as e:
-        print(f"ERROR fetching s3://{bucket}/{key}: {e}")
+        logger.error(f"ERROR fetching s3://{bucket}/{key}: {e}")
         raise
 
 
@@ -52,11 +53,11 @@ async def fetch_worker(queue, writer_queue, semaphore, httpx_client, pbar):
                     await writer_queue.put(row)
                     pbar.update(1)
                 except Exception as e:
-                    print(f"Worker failed to fetch: {e}")
+                    logger.warning(f"Worker failed to fetch: {e}")
                     pbar.update(1)
             queue.task_done()
         except Exception as e:
-            print(f"Worker exception: {e}")
+            logger.error(f"Worker exception: {e}")
             queue.task_done()
 
 
@@ -67,12 +68,12 @@ async def write_worker(queue, rows):
         if item is None:
             # Flush any remaining rows before exiting
             if rows:
-                print(f"Flushing {len(rows)} rows to parquet")
+                logger.info(f"Flushing {len(rows)} rows to parquet")
                 table = pl.DataFrame(rows)
                 timestamp = datetime.utcnow().strftime("%Y%m%dT%H%M%S")
                 filename = f"pmc_text_{timestamp}.parquet"
                 pq.write_table(table.to_arrow(), filename)
-                print(f"Wrote {filename}")
+                logger.info(f"Wrote {filename}")
                 rows.clear()
             queue.task_done()
             break
@@ -80,12 +81,12 @@ async def write_worker(queue, rows):
         rows.append(item)
         byte_count += item["content_length"]
         if byte_count >= 1_000_000_000:  # 1 GB
-            print(f"Flushing {len(rows)} rows to parquet (1GB threshold)")
+            logger.info(f"Flushing {len(rows)} rows to parquet (1GB threshold)")
             table = pl.DataFrame(rows)
             timestamp = datetime.utcnow().strftime("%Y%m%dT%H%M%S")
             filename = f"pmc_text_{timestamp}.parquet"
             pq.write_table(table.to_arrow(), filename)
-            print(f"Wrote {filename}")
+            logger.info(f"Wrote {filename}")
             rows.clear()
             byte_count = 0
         queue.task_done()
@@ -147,14 +148,14 @@ async def run():
         # Create write workers
         write_workers = [asyncio.create_task(write_worker(writer_queue, rows))]
 
-        print("Starting to fetch from metadata")
+        logger.info("Starting to fetch from metadata")
         for k in keys:
             await reader_queue.put(k)
 
-        print("All items queued, waiting for readers...")
+        logger.info("All items queued, waiting for readers...")
         # Wait for all fetches to complete
         await reader_queue.join()
-        print("All reads complete, signaling workers to stop...")
+        logger.info("All reads complete, signaling workers to stop...")
 
         # Signal fetch workers to stop
         for _ in fetch_workers:
@@ -163,9 +164,9 @@ async def run():
         try:
             await asyncio.wait_for(asyncio.gather(*fetch_workers), timeout=30.0)
         except TimeoutError:
-            print("Timeout waiting for fetch workers")
+            logger.warning("Timeout waiting for fetch workers")
 
-        print("All fetch workers stopped, waiting for writers...")
+        logger.info("All fetch workers stopped, waiting for writers...")
         # Wait for all writes to complete
         await writer_queue.join()
 
@@ -176,10 +177,10 @@ async def run():
         try:
             await asyncio.wait_for(asyncio.gather(*write_workers), timeout=30.0)
         except TimeoutError:
-            print("Timeout waiting for write workers")
+            logger.warning("Timeout waiting for write workers")
 
         pbar.close()
-        print(f"Complete. Fetched {len(rows)} items")
+        logger.info(f"Complete. Fetched {len(rows)} items")
     finally:
         await httpx_client.aclose()
 

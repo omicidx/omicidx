@@ -18,8 +18,7 @@ import omicidx.parsers.geo.pydantic_models as pydantic_models
 from Bio import Entrez
 from tenacity import retry, stop_after_attempt, wait_exponential
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("omicidx")
+logger = logging.getLogger(__name__)
 
 ETYP = ["GSE", "GSM", "GPL", "GDS"]
 
