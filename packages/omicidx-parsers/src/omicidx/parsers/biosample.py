@@ -178,14 +178,15 @@ def parse_bioproject_xml_element(element: Element) -> dict:
     d2["description"] = projtop.findtext("./Project/ProjectDescr/Description")
     d2["name"] = projtop.findtext("./Project/ProjectDescr/Name")
     archive_id = projtop.find("./Project/ProjectID/ArchiveID")
-    d2["accession"] = archive_id.attrib["accession"]  # type: ignore
+    d2["accession"] = archive_id.attrib["accession"] if archive_id is not None else None
     pubs = []
     for pub in projtop.findall(".//Publication"):
+        db_type = pub.findtext("./DbType") or ""
         pubs.append(
             {
                 "pubdate": pub.get("date", None),
                 "id": pub.get("id", None),
-                "db": re.sub("^e", "", pub.findtext("./DbType").replace("^e", "", 1)),  # type: ignore
+                "db": re.sub("^e", "", db_type),
             }
         )
     d2["publications"] = pubs
