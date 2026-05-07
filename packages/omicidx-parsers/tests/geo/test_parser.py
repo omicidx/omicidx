@@ -1,9 +1,12 @@
 import io
 
 import pydantic
+import pytest
 from omicidx.parsers.geo import parser
 
 TEST_GSE = "GSE10"
+
+pytestmark = pytest.mark.network
 
 
 def test_entrez_instance():
