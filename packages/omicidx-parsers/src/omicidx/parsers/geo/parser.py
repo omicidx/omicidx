@@ -222,7 +222,7 @@ def get_geo_entities(txt):
 #####################################
 
 
-def get_subseries_from_relations(relation_list):
+def get_subseries_from_relations(relation_list: list[str]) -> list[str]:
     ret = []
     for i in relation_list:
         if i.startswith("SuperSeries of:"):
@@ -230,7 +230,7 @@ def get_subseries_from_relations(relation_list):
     return ret
 
 
-def get_bioprojects_from_relations(relation_list):
+def get_bioprojects_from_relations(relation_list: list[str]) -> list[str]:
     ret = []
     for i in relation_list:
         if i.startswith("BioProject: https://www.ncbi.nlm.nih.gov/bioproject/"):
@@ -240,7 +240,7 @@ def get_bioprojects_from_relations(relation_list):
     return ret
 
 
-def get_SRA_from_relations(relation_list):
+def get_sra_from_relations(relation_list: list[str]) -> list[str]:
     ret = []
     for i in relation_list:
         if i.startswith("SRA: https://www.ncbi.nlm.nih.gov/sra?term="):
@@ -248,7 +248,7 @@ def get_SRA_from_relations(relation_list):
     return ret
 
 
-def get_biosample_from_relations(relation_list):
+def get_biosample_from_relations(relation_list: list[str]) -> list[str]:
     ret = []
     for i in relation_list:
         if i.startswith("BioSample: https://www.ncbi.nlm.nih.gov/biosample/"):
@@ -258,7 +258,7 @@ def get_biosample_from_relations(relation_list):
     return ret
 
 
-def get_channel_characteristics(d, ch):
+def get_channel_characteristics(d: dict, ch: int) -> dict:
     ch_items = [k for k in d if k.endswith(f"ch{ch}")]
     characteristics = []
     ret = {}
@@ -287,12 +287,12 @@ def get_channel_characteristics(d, ch):
     return ret
 
 
-def _split_geo_name(v):
+def _split_geo_name(v: str) -> dict[str, str]:
     """split name of form first,middle,last into dict"""
     return dict(zip(["first", "middle", "last"], v.split(","), strict=False))
 
 
-def _create_contact_from_parsed(d):
+def _create_contact_from_parsed(d: dict) -> dict:
     contact_dict = {}
     for k, v in d.items():
         if k.startswith("contact"):
@@ -312,7 +312,7 @@ def _create_contact_from_parsed(d):
     return contact_dict
 
 
-def _split_contributor_names(contribs):
+def _split_contributor_names(contribs: list[str]) -> list[dict]:
     if len(contribs) == 0:
         return []
     return [_split_geo_name(v) for v in contribs]
@@ -324,7 +324,7 @@ def _split_contributor_names(contribs):
 # GSE, GSM, or GPL specific parser and return #
 # appropriate class.                          #
 ###############################################
-def _parse_single_entity_soft(entity_txt):
+def _parse_single_entity_soft(entity_txt: list[str]):
     # Deal with common stuff first:
     tups = [_split_on_first_equal(line) for line in entity_txt]
     tups[0][1]
@@ -384,7 +384,7 @@ def _parse_single_entity_soft(entity_txt):
 ###############################################################################
 #        Update date fields of format 'month day year' to date type.          #
 ###############################################################################
-def _fix_date_fields(d):
+def _fix_date_fields(d: dict) -> dict:
     for datefield in ["submission_date", "last_update_date"]:
         if datefield in d:
             d[datefield] = datetime.datetime.strptime(d[datefield], "%b %d %Y")
@@ -398,7 +398,7 @@ def _parse_single_gse_soft(d2):
     try:
         d2["subseries"] = get_subseries_from_relations(d2["relation"])
         d2["bioprojects"] = get_bioprojects_from_relations(d2["relation"])
-        d2["sra_studies"] = get_SRA_from_relations(d2["relation"])
+        d2["sra_studies"] = get_sra_from_relations(d2["relation"])
         # GEO sometimes references SRS and SRR from series--filter those out
         d2["sra_studies"] = list(filter(lambda a: a.find("P") > 0, d2["sra_studies"]))
     except KeyError:
@@ -420,7 +420,7 @@ def _parse_single_gse_soft(d2):
     return pydantic_models.GEOSeries(**d2)
 
 
-def _create_gsm_channel_data(d):
+def _create_gsm_channel_data(d: dict) -> list[dict]:
     ch_count = int(d["channel_count"])
     ch_recs = []
     for i in range(0, ch_count):
@@ -460,7 +460,7 @@ def _parse_single_gsm_soft(d2):
             d2[k] = None
     try:
         d2["biosample"] = get_biosample_from_relations(d2["relation"])[0]
-        d2["sra_experiment"] = get_SRA_from_relations(d2["relation"])[0]
+        d2["sra_experiment"] = get_sra_from_relations(d2["relation"])[0]
     except (KeyError, IndexError):
         d2["biosample"] = None
         d2["sra_experiment"] = None
