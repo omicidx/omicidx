@@ -106,9 +106,12 @@ class PostgresResource(dg.ConfigurableResource):
     @contextmanager
     def attach(self, con: duckdb.DuckDBPyConnection, schema: str = "public"):
         """Attach this Postgres database to a DuckDB connection."""
+        def _q(value: str) -> str:
+            return value.replace("'", "''")
+
         con.execute("INSTALL postgres; LOAD postgres;")
         con.execute(
-            f"ATTACH '{self.uri}' AS pg (TYPE POSTGRES, SCHEMA '{schema}')"
+            f"ATTACH '{_q(self.uri)}' AS pg (TYPE POSTGRES, SCHEMA '{_q(schema)}')"
         )
         try:
             yield

@@ -1,6 +1,9 @@
 import base64
+import binascii
 import json
 from dataclasses import dataclass
+
+from fastapi import HTTPException
 
 
 @dataclass
@@ -18,7 +21,20 @@ def encode_cursor(value: str | int) -> str:
 
 def decode_cursor(token: str) -> CursorPage:
     """Decode a cursor token back to a keyset value."""
-    # Re-pad base64
-    padded = token + "=" * (-len(token) % 4)
-    payload = json.loads(base64.urlsafe_b64decode(padded))
-    return CursorPage(after=payload["v"])
+    try:
+        padded = token + "=" * (-len(token) % 4)
+        payload = json.loads(base64.urlsafe_b64decode(padded))
+        value = payload["v"]
+    except (
+        binascii.Error,
+        json.JSONDecodeError,
+        KeyError,
+        TypeError,
+        UnicodeDecodeError,
+    ) as exc:
+        raise HTTPException(status_code=400, detail="Invalid cursor") from exc
+
+    if not isinstance(value, str | int):
+        raise HTTPException(status_code=400, detail="Invalid cursor")
+
+    return CursorPage(after=value)
