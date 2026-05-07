@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Architecture and design
+
+For the system architecture, design decisions (DuckDB for ELT, ClickHouse/StarRocks for serving, Dagster code location pattern, FastAPI on Cloud Run, etc.), and migration plan, see [docs/architecture.md](docs/architecture.md). That document is the canonical source of design context — start there before making cross-cutting changes.
+
 ## Repo structure
 
 This is a **uv workspace** consolidating three packages:
