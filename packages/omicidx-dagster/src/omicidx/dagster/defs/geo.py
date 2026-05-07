@@ -234,22 +234,36 @@ def geo_rna_seq_counts(
         "geo_gse_raw": dg.AssetOut(
             group_name="geo",
             kinds={"python", "json", "s3"},
+            tags={
+                "layer": "raw",
+                "cost": "high",
+                "sla": "monthly",
+                "source": "ncbi_api",
+                "storage": "ndjson",
+            },
         ),
         "geo_gsm_raw": dg.AssetOut(
             group_name="geo",
             kinds={"python", "json", "s3"},
+            tags={
+                "layer": "raw",
+                "cost": "high",
+                "sla": "monthly",
+                "source": "ncbi_api",
+                "storage": "ndjson",
+            },
         ),
         "geo_gpl_raw": dg.AssetOut(
             group_name="geo",
             kinds={"python", "json", "s3"},
+            tags={
+                "layer": "raw",
+                "cost": "high",
+                "sla": "monthly",
+                "source": "ncbi_api",
+                "storage": "ndjson",
+            },
         ),
-    },
-    tags={
-        "layer": "raw",
-        "cost": "high",
-        "sla": "monthly",
-        "source": "ncbi_api",
-        "storage": "ndjson",
     },
     partitions_def=geo_monthly_partitions,
     retry_policy=dg.RetryPolicy(max_retries=2, delay=60),

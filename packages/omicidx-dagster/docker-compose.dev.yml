@@ -45,8 +45,8 @@ services:
       - ./.env:/opt/dagster/workspace/packages/omicidx-dagster/.env:ro
     command:
       - dagster
-      - api
-      - grpc
+      - code-server
+      - start
       - -h
       - "0.0.0.0"
       - -p
