@@ -33,6 +33,7 @@ copy (
         relation,
         trim(manufacture_protocol) as manufacture_protocol
     from read_ndjson_auto('r2://omicidx/geo/raw/gpl/**/*.ndjson.gz')
+    qualify row_number() over (partition by accession order by last_update_date desc nulls last) = 1
     order by accession
 ) to 'r2://omicidx/geo/parquet/geo_platforms.parquet' (format parquet, compression zstd);
 
@@ -64,6 +65,7 @@ copy (
         trim(overall_design) as overall_design,
         contributor
     from read_ndjson_auto('r2://omicidx/geo/raw/gse/**/*.ndjson.gz')
+    qualify row_number() over (partition by accession order by last_update_date desc nulls last) = 1
     order by accession
 ) to 'r2://omicidx/geo/parquet/geo_series.parquet' (format parquet, compression zstd);
 
@@ -96,6 +98,7 @@ copy (
         channels,
         contributor
     from read_ndjson_auto('r2://omicidx/geo/raw/gsm/**/*.ndjson.gz')
+    qualify row_number() over (partition by accession order by last_update_date desc nulls last) = 1
     order by accession
 ) to 'r2://omicidx/geo/parquet/geo_samples.parquet' (format parquet, compression zstd);
 
