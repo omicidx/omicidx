@@ -30,10 +30,10 @@ class FileSet(BaseModel):
     filename: str | None = None
     url: str | None = None
     size: int = 0
-    date: datetime = None
+    date: datetime | None = None
     md5: str | None = None
     sratoolkit: str = "1"
-    alternatives: list[FileAlternative]
+    alternatives: list[FileAlternative] = []
 
 
 class BaseQualityCount(BaseModel):
@@ -59,7 +59,7 @@ class TaxCountAnalysis(BaseModel):
     nspot_analyze: int | None = None
     total_spots: int | None = None
     mapped_spots: int | None = None
-    tax_counts: list[TaxCountEntry] = None
+    tax_counts: list[TaxCountEntry] = []
 
 
 class RunRead(BaseModel):
@@ -74,16 +74,16 @@ class BaseCounts(BaseModel):  # (List[Dict[str, int]]):
 
 
 class LiveList(BaseModel):
-    lastupdate: datetime = None
-    published: datetime = None
-    received: datetime = None
+    lastupdate: datetime | None = None
+    published: datetime | None = None
+    received: datetime | None = None
     status: str = "live"
     insdc: bool = True
 
 
 class SraRun(LiveList, BaseModel):
     alias: str | None = None
-    run_date: datetime = None
+    run_date: datetime | None = None
     run_center: str | None = None
     center_name: str | None = None
     accession: str
@@ -91,18 +91,18 @@ class SraRun(LiveList, BaseModel):
     total_bases: int = 0
     size: int = 0
     load_done: bool = True
-    published: datetime = None
+    published: datetime | None = None
     is_public: bool = True
     cluster_name: str = "public"
     static_data_available: str = "1"
     avg_length: float = 0.0
     experiment_accession: str
-    attributes: list[Attribute] = None
-    files: list[FileSet] = None
-    qualities: BaseQualities = None
-    base_counts: BaseCounts = None
-    reads: list[RunRead] = None
-    tax_analysis: TaxCountAnalysis = None
+    attributes: list[Attribute] = []
+    files: list[FileSet] = []
+    qualities: BaseQualities | None = None
+    base_counts: BaseCounts | None = None
+    reads: list[RunRead] = []
+    tax_analysis: TaxCountAnalysis | None = None
 
 
 class SraStudy(LiveList, BaseModel):
@@ -116,9 +116,9 @@ class SraStudy(LiveList, BaseModel):
     description: str | None = None
     study_type: str | None = None
     title: str | None = None
-    identifiers: list[Identifier] = None
-    attributes: list[Attribute] = None
-    pubmed_ids: list[int] = None
+    identifiers: list[Identifier] = []
+    attributes: list[Attribute] = []
+    pubmed_ids: list[int] = []
 
 
 class SraExperiment(LiveList, BaseModel):
@@ -128,18 +128,18 @@ class SraExperiment(LiveList, BaseModel):
     center_name: str | None = None
     design: str | None = None
     description: str | None = None
-    identifiers: list[Identifier] = None
+    identifiers: list[Identifier] = []
     instrument_model: str | None = None
     library_name: str | None = None
     library_construction_protocol: str | None = None
     library_layout_orientation: str | None = None
-    library_layout_length: float = None
-    library_layout_sdev: float = None
+    library_layout_length: float | None = None
+    library_layout_sdev: float | None = None
     library_strategy: str | None = None
     library_source: str | None = None
     library_selection: str | None = None
     library_layout: str | None = None
-    xrefs: list[Xref] = None
+    xrefs: list[Xref] = []
     platform: str | None = None
     sample_accession: str | None = None
     study_accession: str | None = None
@@ -155,9 +155,9 @@ class SraSample(LiveList, BaseModel):
     organism: str | None = None
     taxon_id: int | None = None
     description: str | None = None
-    identifiers: list[Identifier] = None
-    attributes: list[Attribute] = None
-    xrefs: list[Xref] = None
+    identifiers: list[Identifier] = []
+    attributes: list[Attribute] = []
+    xrefs: list[Xref] = []
 
 
 class FullSraRun(SraRun):
