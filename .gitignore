@@ -2,6 +2,9 @@
 *.duckdb
 *.duckdb.wal
 
+# Secrets
+.env
+
 # Python
 __pycache__/
 *.pyc

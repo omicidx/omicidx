@@ -1,0 +1,43 @@
+[project]
+name = "omicidx-dagster"
+version = "0.1.0"
+description = "Dagster code location for OmicIDX ETL pipelines"
+authors = [
+    {name = "Sean Davis", email = "seandavi@gmail.com"},
+]
+license = {text = "MIT"}
+requires-python = ">=3.11"
+dependencies = [
+    "dagster>=1.13",
+    "omicidx-parsers",
+    "pyarrow>=20.0.0",
+    "httpx>=0.28",
+    "orjson>=3.10",
+    "duckdb>=1.4",
+    "sqlglot>=27.0",
+    "universal-pathlib>=0.2.2",
+    "s3fs>=2023.0.0",
+    "tenacity>=8.0",
+    "pubmed-parser @ git+https://github.com/seandavi/pubmed_parser",
+    "polars-lts-cpu>=1.32",
+    "python-dotenv>=1.1",
+    "anyio[trio]>=4.0",
+]
+
+[dependency-groups]
+dev = [
+    "dagster-webserver",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/omicidx"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.uv.sources]
+omicidx-parsers = { workspace = true }
