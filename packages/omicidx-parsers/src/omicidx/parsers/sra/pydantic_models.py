@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 
 
 class Attribute(BaseModel):
@@ -42,7 +42,6 @@ class BaseQualityCount(BaseModel):
 
 
 class BaseQualities(BaseModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
     pass
 
 
