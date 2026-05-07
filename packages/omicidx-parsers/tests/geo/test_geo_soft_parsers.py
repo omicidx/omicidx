@@ -78,9 +78,9 @@ def test_get_bioprojects_from_relations():
     assert result == ["PRJNA12345"]
 
 
-def test_get_SRA_from_relations():
+def test_get_sra_from_relations():
     rels = ["SRA: https://www.ncbi.nlm.nih.gov/sra?term=SRP000001"]
-    result = geo_parser.get_SRA_from_relations(rels)
+    result = geo_parser.get_sra_from_relations(rels)
     assert result == ["SRP000001"]
 
 
@@ -93,7 +93,7 @@ def test_get_biosample_from_relations():
 def test_relation_helpers_empty_list():
     assert geo_parser.get_subseries_from_relations([]) == []
     assert geo_parser.get_bioprojects_from_relations([]) == []
-    assert geo_parser.get_SRA_from_relations([]) == []
+    assert geo_parser.get_sra_from_relations([]) == []
     assert geo_parser.get_biosample_from_relations([]) == []
 
 
@@ -101,7 +101,7 @@ def test_relation_helpers_no_match():
     rels = ["something else entirely"]
     assert geo_parser.get_subseries_from_relations(rels) == []
     assert geo_parser.get_bioprojects_from_relations(rels) == []
-    assert geo_parser.get_SRA_from_relations(rels) == []
+    assert geo_parser.get_sra_from_relations(rels) == []
     assert geo_parser.get_biosample_from_relations(rels) == []
 
 
