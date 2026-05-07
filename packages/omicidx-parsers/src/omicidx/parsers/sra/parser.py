@@ -25,7 +25,7 @@ from collections import defaultdict
 
 from . import pydantic_models
 
-logger = logging.getLogger("sra_parser")
+logger = logging.getLogger(__name__)
 
 
 def parse_xml_url(url: str, entity: str, gz: bool = True):
