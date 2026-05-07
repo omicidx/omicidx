@@ -247,7 +247,7 @@ class BioProjectParser(typing.Iterable):
                 results = parse_bioproject_xml_element(elem)
                 elem.clear()
                 if self.validate_with_schema:
-                    return BioProject(**results).dict()
+                    return BioProject(**results).model_dump()
                 else:
                     return results
 
