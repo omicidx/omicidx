@@ -1,5 +1,4 @@
-# these are just to test types
-import http
+import io
 
 import pydantic
 from omicidx.parsers.geo import parser
@@ -15,7 +14,7 @@ def test_entrez_instance():
 
 def test_get_geo_accession_xml():
     res = parser.get_geo_accession_xml(TEST_GSE)
-    assert isinstance(res, http.client.HTTPResponse)
+    assert isinstance(res, io.BytesIO)
     firstline = next(res)
     assert isinstance(firstline, bytes)
     assert firstline.decode("UTF-8").startswith("<?xml")

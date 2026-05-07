@@ -10,8 +10,7 @@ import collections
 import datetime
 import logging
 import re
-import urllib
-from io import StringIO
+from io import BytesIO, StringIO
 
 import httpx
 import omicidx.parsers.geo.pydantic_models as pydantic_models
@@ -130,8 +129,10 @@ def get_geo_accession_xml(accession, targ="all", view="brief"):
         stop=stop_after_attempt(10),
         reraise=True,
     )
-    def _fetch():
-        return urllib.request.urlopen(url)
+    def _fetch() -> BytesIO:
+        resp = httpx.get(url, timeout=120, follow_redirects=True)
+        resp.raise_for_status()
+        return BytesIO(resp.content)
 
     return _fetch()
 

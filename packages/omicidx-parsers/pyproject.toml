@@ -10,7 +10,6 @@ authors = [
 ]
 keywords = ["genomics", "bioinformatics", "open data", "SRA", "GEO", "biosample"]
 dependencies = [
-    "requests>=2.22",
     "click",
     "tenacity>=8.0.1",
     "httpx",
