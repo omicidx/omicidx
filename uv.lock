@@ -2196,7 +2196,6 @@ dependencies = [
     { name = "httpx" },
     { name = "orjson" },
     { name = "pydantic" },
-    { name = "requests" },
     { name = "tenacity" },
     { name = "universal-pathlib" },
 ]
@@ -2218,7 +2217,6 @@ requires-dist = [
     { name = "orjson", specifier = ">=3.9.2" },
     { name = "pydantic", specifier = ">=2" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.4.0" },
-    { name = "requests", specifier = ">=2.22" },
     { name = "tenacity", specifier = ">=8.0.1" },
     { name = "universal-pathlib" },
 ]

@@ -17,11 +17,11 @@ import contextlib
 import gzip
 import logging
 import re
-import urllib
-import urllib.error
-import urllib.request
 import xml.etree.ElementTree as etree
 from collections import defaultdict
+from io import BytesIO
+
+import httpx
 
 from . import pydantic_models
 
@@ -31,7 +31,9 @@ logger = logging.getLogger(__name__)
 def parse_xml_url(url: str, entity: str, gz: bool = True):
     n = 0
 
-    with gzip.open(urllib.request.urlopen(url), "rb") as f:
+    resp = httpx.get(url, timeout=120, follow_redirects=True)
+    resp.raise_for_status()
+    with gzip.open(BytesIO(resp.content), "rb") as f:
         for event, element in etree.iterparse(f):
             if event == "end" and element.tag == entity:
                 rec = globals()["SRA" + entity.title() + "Record"](element).data
