@@ -100,7 +100,7 @@ def parse_xml_file(xmlfilename):
     logger.info(f"parsed {n} entity entries")
 
 
-def parse_study(xml):
+def parse_study(xml: etree.Element) -> dict:
     """Parse an SRA xml STUDY element
 
     Parameters
@@ -148,7 +148,7 @@ def parse_study(xml):
     return d
 
 
-def parse_submission(xml):
+def parse_submission(xml: etree.Element) -> dict:
     """Parse an SRA xml SUBMISSION element
 
     Parameters
@@ -180,7 +180,7 @@ def model_from_single_xml(txt):
     return getattr(pydantic_models, "Sra" + entity.capitalize())(**et)
 
 
-def parse_run(xml):
+def parse_run(xml: etree.Element) -> dict:
     """Parse an SRA xml RUN element
 
     Parameters
@@ -218,7 +218,7 @@ def parse_run(xml):
     return d
 
 
-def _parse_run_stats(xml):
+def _parse_run_stats(xml: etree.Element | None) -> dict | None:
     if xml is None:
         return None
     stats = []
@@ -232,7 +232,7 @@ def _parse_run_stats(xml):
     return {"reads": stats}
 
 
-def _parse_run_bases(xml):
+def _parse_run_bases(xml: etree.Element | None) -> dict | None:
     if xml is None:
         return None
     ret = []
@@ -241,7 +241,7 @@ def _parse_run_bases(xml):
     return {"base_counts": ret}
 
 
-def _parse_run_files(xml):
+def _parse_run_files(xml: etree.Element | None) -> dict | None:
     if xml is None:
         return None
     files = xml.findall("./SRAFile")
@@ -260,7 +260,7 @@ def _parse_run_files(xml):
     return {"files": ret}
 
 
-def parse_experiment(xml):
+def parse_experiment(xml: etree.Element) -> dict:
     """Parse an SRA xml EXPERIMENT element
 
     Parameters
@@ -349,7 +349,7 @@ def parse_experiment(xml):
     return d
 
 
-def parse_sample(xml):
+def parse_sample(xml: etree.Element) -> dict:
     """Parse an SRA xml SAMPLE element
 
     Parameters
@@ -380,7 +380,7 @@ def parse_sample(xml):
     return d
 
 
-def _parse_run_reads(node):
+def _parse_run_reads(node: etree.Element | None) -> dict:
     """Parse reads from runs."""
     d = {}
     try:
@@ -409,7 +409,7 @@ def _parse_run_reads(node):
     return d
 
 
-def _parse_run_qualities(node):
+def _parse_run_qualities(node: etree.Element) -> dict:
     """Parse the quality stats, if available, from RUN"""
     d = {}
     d["qualities"] = []
@@ -423,7 +423,7 @@ def _parse_run_qualities(node):
     return d
 
 
-def _parse_taxon(node):
+def _parse_taxon(node: etree.Element | None) -> dict:
     """Parse taxonomy informaiton."""
 
     def crawl(node, d=None):
@@ -512,16 +512,16 @@ def _safe_add_text_element(d, key, elem):
         d[key] = txt.strip()
 
 
-def _parse_attributes(xml):
-    if xml is None:
-        return {}
-    """Add attributes to a record
+def _parse_attributes(xml: etree.Element | None) -> dict:
+    """Parse attributes from an SRA XML ATTRIBUTES element.
 
     Parameters
     ----------
-    xml: xml.etree.ElementTree.ElementTree.Element
+    xml: xml.etree.ElementTree.Element or None
         An xml element of level "EXPERIMENT|STUDY|RUN|SAMPLE_ATTRIBUTES"
     """
+    if xml is None:
+        return {}
     d = defaultdict(list)
     # Iterate over "XXX_ATTRIBUTES"
     for elem in xml:
@@ -537,12 +537,12 @@ def _parse_attributes(xml):
     return d
 
 
-def _parse_links(xml):
-    """Add attributes to a record
+def _parse_links(xml: etree.Element | None) -> dict:
+    """Parse xref links from an SRA XML LINKS element.
 
     Parameters
     ----------
-    xml: xml.etree.ElementTree.ElementTree.Element
+    xml: xml.etree.ElementTree.Element or None
         An xml element of level "EXPERIMENT|STUDY|RUN|SAMPLE_LINKS"
     """
     if xml is None:
@@ -601,7 +601,7 @@ def _get_special_ids(id_rec):
         return False
 
 
-def _parse_identifiers(xml, section):
+def _parse_identifiers(xml: etree.Element, section: str) -> dict:
     """Parse IDENTIFIERS section"""
 
     d = defaultdict(list)
@@ -625,7 +625,7 @@ def _parse_identifiers(xml, section):
     return d
 
 
-def _process_path_map(xml, path_map):
+def _process_path_map(xml: etree.Element, path_map: dict) -> dict:
     d = {}
     for k, v in path_map.items():
         try:
@@ -651,7 +651,7 @@ def _process_path_map(xml, path_map):
     return d
 
 
-def _parse_study_type(xml):
+def _parse_study_type(xml: etree.Element | None) -> dict:
     d = {}
     if xml is None:
         return d
@@ -662,7 +662,7 @@ def _parse_study_type(xml):
     return d
 
 
-def try_update(d, value):
+def try_update(d: dict, value) -> dict:
     try:
         d.update(value)
         return d
