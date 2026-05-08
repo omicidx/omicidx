@@ -100,7 +100,11 @@ class PostgresResource(dg.ConfigurableResource):
         if not sql.strip():
             msg = "SQL statement cannot be empty"
             raise ValueError(msg)
-        parsed = [expr.sql(dialect="postgres") for expr in sqlglot.parse(sql, read="postgres")]
+        parsed = [
+            expr.sql(dialect="postgres")
+            for expr in sqlglot.parse(sql, read="postgres")
+            if expr is not None
+        ]
         if not parsed:
             msg = "No executable SQL statements were parsed"
             raise ValueError(msg)
