@@ -31,7 +31,7 @@ async def get_study(accession: str, session: Session):
     relationships = {}
     if row.bioproject:
         relationships["bioproject"] = Relationship(
-            accession=row.bioproject, href=f"/v1/biosample/{row.bioproject}"
+            accession=row.bioproject, href=f"/v1/bioproject/{row.bioproject}"
         )
 
     return build_item_response(item=row.data, relationships=relationships or None)
