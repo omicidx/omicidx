@@ -25,6 +25,34 @@ _PG_TAGS = {
 }
 
 
+def _get_live_backing_table(postgres: PostgresResource, view_name: str) -> str | None:
+    """Check which backing table a view currently points to, or None if no view."""
+    import asyncio
+
+    from sqlalchemy import text
+    from sqlalchemy.ext.asyncio import create_async_engine
+
+    async def _check():
+        engine = create_async_engine(postgres.async_uri)
+        async with engine.begin() as conn:
+            result = await conn.execute(text(
+                "SELECT definition FROM pg_views WHERE viewname = :name"
+            ), {"name": view_name})
+            row = result.first()
+        await engine.dispose()
+        if row is None:
+            return None
+        defn = row[0]
+        # definition looks like: " SELECT ... FROM {table}_a;" or "{table}_b"
+        if f"{view_name}_b" in defn:
+            return f"{view_name}_b"
+        if f"{view_name}_a" in defn:
+            return f"{view_name}_a"
+        return None
+
+    return asyncio.run(_check())
+
+
 def _load_to_postgres(
     *,
     context: dg.AssetExecutionContext,
@@ -36,16 +64,44 @@ def _load_to_postgres(
     parquet_parts: tuple[str, ...],
     insert_sql_template: str,
 ) -> dg.MaterializeResult:
-    """Shared helper: DDL via asyncpg, bulk INSERT via DuckDB postgres_scanner."""
+    """Load parquet into Postgres with zero-downtime view swap.
+
+    The API reads from a view named `{table}`. Two backing tables alternate:
+    `{table}_a` and `{table}_b`. Each reload writes to whichever is NOT
+    currently backing the view, swaps the view, then drops the old one.
+
+    CREATE OR REPLACE VIEW only takes AccessShareLock — reads never block.
+    """
     parquet_path = storage.get_duckdb_path(*parquet_parts)
+    tbl_a = f"{table}_a"
+    tbl_b = f"{table}_b"
 
-    context.log.info(f"Ensuring {table} table exists")
-    postgres.execute_sql(ddl, f"TRUNCATE {table}")
+    # Determine which slot is currently live by checking the view definition
+    # If no view exists yet (first run), both slots are free — use _a
+    live = _get_live_backing_table(postgres, table)
+    target = tbl_b if live == tbl_a else tbl_a
 
+    # Create and load the target table
+    context.log.info(f"Loading into {target} (live={live or 'none'})")
+    target_ddl = ddl.replace(table, target)
+    postgres.execute_sql(
+        f"DROP TABLE IF EXISTS {target} CASCADE",
+        target_ddl,
+    )
+
+    target_insert = insert_sql_template.replace(f"pg.{table}", f"pg.{target}")
     with duckdb_res.get_connection() as con, postgres.attach(con):
-        context.log.info(f"Loading {table} from {parquet_path}")
-        con.execute(insert_sql_template.format(path=parquet_path))
-        row_count = con.execute(f"SELECT count(*) FROM pg.{table}").fetchone()[0]
+        context.log.info(f"Loading {target} from {parquet_path}")
+        con.execute(target_insert.format(path=parquet_path))
+        row_count = con.execute(f"SELECT count(*) FROM pg.{target}").fetchone()[0]
+
+    # Swap view to target, drop old backing table
+    context.log.info(f"Swapping view {table} → {target} ({row_count:,} rows)")
+    postgres.execute_sql(
+        f"CREATE OR REPLACE VIEW {table} AS SELECT * FROM {target}",
+    )
+    if live:
+        postgres.execute_sql(f"DROP TABLE IF EXISTS {live} CASCADE")
 
     context.log.info(f"Loaded {row_count:,} rows into {table}")
     return dg.MaterializeResult(
