@@ -62,6 +62,18 @@ def _get_live_backing_table(postgres: PostgresResource, view_name: str) -> str |
     async def _check():
         engine = create_async_engine(postgres.async_uri)
         async with engine.begin() as conn:
+            view_exists_result = await conn.execute(
+                text("""
+                    SELECT 1
+                    FROM pg_class view_cls
+                    JOIN pg_namespace view_ns ON view_ns.oid = view_cls.relnamespace
+                    WHERE view_cls.relkind = 'v'
+                      AND view_ns.nspname = 'public'
+                      AND view_cls.relname = :view_name
+                """),
+                {"view_name": view_name},
+            )
+            view_exists = view_exists_result.first() is not None
             slot_a = f"{view_name}_a"
             slot_b = f"{view_name}_b"
             result = await conn.execute(
@@ -85,6 +97,11 @@ def _get_live_backing_table(postgres: PostgresResource, view_name: str) -> str |
             rows = result.fetchall()
         await engine.dispose()
         if not rows:
+            if view_exists:
+                raise ValueError(
+                    f"View {view_name!r} does not reference expected A/B tables "
+                    f"({slot_a}, {slot_b}). Check for manual schema/view changes."
+                )
             return None
         if len(rows) > 1:
             table_names = ", ".join(row[0] for row in rows)

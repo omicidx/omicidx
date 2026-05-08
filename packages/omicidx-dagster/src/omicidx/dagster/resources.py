@@ -94,6 +94,11 @@ class PostgresResource(dg.ConfigurableResource):
         """Convert standard postgresql:// to asyncpg driver URI."""
         return self.uri.replace("postgresql://", "postgresql+asyncpg://", 1)
 
+    @staticmethod
+    def _split_postgres_statements(sql: str) -> list[str]:
+        """Split SQL text into executable PostgreSQL statements."""
+        return [expr.sql(dialect="postgres") for expr in sqlglot.parse(sql, read="postgres")]
+
     def execute_sql(self, *statements: str) -> None:
         """Run SQL statements against Postgres via SQLAlchemy async + asyncpg.
 
@@ -106,8 +111,8 @@ class PostgresResource(dg.ConfigurableResource):
             engine = create_async_engine(self.async_uri)
             async with engine.begin() as conn:
                 for sql in statements:
-                    for parsed in sqlglot.transpile(sql, read="postgres"):
-                        await conn.execute(text(parsed))
+                    for stmt in self._split_postgres_statements(sql):
+                        await conn.execute(text(stmt))
             await engine.dispose()
 
         asyncio.run(_run())
