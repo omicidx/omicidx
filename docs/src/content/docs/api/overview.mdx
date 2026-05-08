@@ -1,0 +1,81 @@
+---
+title: API overview
+description: Base URL, authentication, response shape, and the rest of what you need to know before making a request.
+---
+
+import Wip from "../../../components/Wip.astro";
+
+## Base URL
+
+```
+https://api-omicidx.cancerdatasci.org/v1
+```
+
+All endpoints are mounted under the `/v1/` prefix. The exact paths and parameters are in the [API reference](/api/reference/).
+
+## Authentication
+
+None required. The API is open and read-only. Authenticated higher-rate tiers may be added later.
+
+## Response envelopes
+
+Two envelope shapes — one for collections, one for single items.
+
+### Collection (list) envelope
+
+```json
+{
+  "data": [...],
+  "meta": {
+    "count": 25,
+    "cursor": {
+      "next": "eyJpZCI6MTIzNDV9",
+      "prev": null
+    }
+  },
+  "links": {
+    "self": "...",
+    "next": "...",
+    "prev": null
+  }
+}
+```
+
+- `data` — the page of results.
+- `meta.count` — number of items in `data`.
+- `meta.cursor` — opaque cursor strings for pagination (also encoded into `links.next`/`links.prev`).
+- `links.next` — present when more pages exist; absent (or `null`) on the last page. See [Pagination](/api/pagination/).
+
+### Item envelope
+
+Single-resource endpoints return:
+
+```json
+{
+  "data": { ... },
+  "relationships": {
+    "samples": { "accession": "SRA12345", "href": "/v1/sra/sample/SRA12345" }
+  }
+}
+```
+
+- `data` — the resource object.
+- `relationships` — optional map of links to related resources (e.g., a study's samples). Only present where the API has cross-entity links to surface.
+
+## Endpoints
+
+The full list of endpoints, parameters, and response schemas is in the [API reference](/api/reference/), auto-generated from the live OpenAPI spec.
+
+## Error responses
+
+Standard HTTP status codes:
+
+- `200` — success.
+- `400` — invalid request (malformed cursor, unknown field).
+- `404` — resource not found.
+- `429` — rate limited; see [Rate limits](/api/rate-limits/).
+- `503` — temporary backend issue; retry with backoff.
+
+Error responses include a JSON body with `detail` and, where applicable, the offending field.
+
+<Wip reason="More client-specific examples land once the Python and R clients exist." />

@@ -1,0 +1,26 @@
+services:
+  omicidx-docs:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: omicidx-docs
+    restart: unless-stopped
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.omicidx-docs.rule=Host(`docs.omicidx.cancerdatasci.org`)"
+      - "traefik.http.routers.omicidx-docs.entrypoints=websecure"
+      - "traefik.http.routers.omicidx-docs.tls=true"
+      - "traefik.http.routers.omicidx-docs.tls.certresolver=cloudflare"
+      - "traefik.http.services.omicidx-docs.loadbalancer.server.port=80"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 5s
+      start_period: 5s
+      retries: 3
+
+networks:
+  proxy:
+    external: true

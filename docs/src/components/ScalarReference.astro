@@ -1,0 +1,12 @@
+---
+// Pin Scalar to a known-good major to keep builds reproducible.
+// Bump deliberately when upgrading; #78 covers vendoring as an npm dep.
+const {
+  specUrl = "https://api-omicidx.cancerdatasci.org/openapi.json",
+  scalarVersion = "1",
+} = Astro.props;
+const scalarSrc = `https://cdn.jsdelivr.net/npm/@scalar/api-reference@${scalarVersion}`;
+---
+
+<div id="api-reference" data-url={specUrl}></div>
+<script is:inline src={scalarSrc}></script>
