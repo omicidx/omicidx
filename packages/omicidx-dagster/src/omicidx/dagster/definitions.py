@@ -25,6 +25,10 @@ from omicidx.dagster.defs.consolidate import (  # noqa: E402
     sra_samples_parquet,
     sra_studies_parquet,
 )
+from omicidx.dagster.defs.ebi_biosample import (  # noqa: E402
+    ebi_biosample_parquet,
+    ebi_biosample_raw,
+)
 from omicidx.dagster.defs.geo import (  # noqa: E402
     geo_monthly_partitions,
     geo_raw,
@@ -102,6 +106,9 @@ defs = dg.Definitions(
         biosample_raw,
         bioproject_raw,
         bioproject_parquet,
+        # EBI Biosample (daily-partitioned, separate from NCBI biosample)
+        ebi_biosample_raw,
+        ebi_biosample_parquet,
         # GEO
         geo_rna_seq_counts,
         geo_raw,
