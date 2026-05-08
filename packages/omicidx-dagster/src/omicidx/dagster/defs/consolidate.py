@@ -242,7 +242,10 @@ def sra_studies_parquet(
                 trim("BioProject") as bioproject,
                 trim("GEO") as geo,
                 identifiers, attributes, xrefs, pubmed_ids
-            FROM read_parquet('{input_path}')
+            FROM read_parquet('{input_path}', hive_partitioning=true)
+            QUALIFY row_number() OVER (
+                PARTITION BY accession ORDER BY date DESC, stage DESC
+            ) = 1
             ORDER BY accession
         ) TO '{output}' (FORMAT PARQUET, COMPRESSION ZSTD)
     """
@@ -280,7 +283,10 @@ def sra_samples_parquet(
                 taxon_id,
                 trim("BioSample") as biosample,
                 identifiers, attributes, xrefs
-            FROM read_parquet('{input_path}')
+            FROM read_parquet('{input_path}', hive_partitioning=true)
+            QUALIFY row_number() OVER (
+                PARTITION BY accession ORDER BY date DESC, stage DESC
+            ) = 1
             ORDER BY accession
         ) TO '{output}' (FORMAT PARQUET, COMPRESSION ZSTD)
     """
@@ -330,7 +336,10 @@ def sra_experiments_parquet(
                 trim(library_selection) as library_selection,
                 spot_length, nreads,
                 identifiers, attributes, xrefs, reads
-            FROM read_parquet('{input_path}')
+            FROM read_parquet('{input_path}', hive_partitioning=true)
+            QUALIFY row_number() OVER (
+                PARTITION BY accession ORDER BY date DESC, stage DESC
+            ) = 1
             ORDER BY accession
         ) TO '{output}' (FORMAT PARQUET, COMPRESSION ZSTD)
     """
@@ -366,7 +375,10 @@ def sra_runs_parquet(
                 trim(experiment_accession) as experiment_accession,
                 trim(title) as title,
                 identifiers, attributes, qualities
-            FROM read_parquet('{input_path}')
+            FROM read_parquet('{input_path}', hive_partitioning=true)
+            QUALIFY row_number() OVER (
+                PARTITION BY accession ORDER BY date DESC, stage DESC
+            ) = 1
             ORDER BY accession
         ) TO '{output}' (FORMAT PARQUET, COMPRESSION ZSTD)
     """
