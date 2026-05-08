@@ -82,6 +82,17 @@ daily_geo_schedule = dg.build_schedule_from_partitioned_job(
 
 
 # ---------------------------------------------------------------------------
+# Automation
+# ---------------------------------------------------------------------------
+
+automation_sensor = dg.AutomationConditionSensorDefinition(
+    name="automation_sensor",
+    target=dg.AssetSelection.all(),
+    default_status=dg.DefaultSensorStatus.RUNNING,
+    minimum_interval_seconds=30,
+)
+
+# ---------------------------------------------------------------------------
 # Definitions
 # ---------------------------------------------------------------------------
 
@@ -126,7 +137,7 @@ defs = dg.Definitions(
         pubmed_postgres,
     ],
     schedules=[daily_extract_schedule, daily_geo_schedule],
-    sensors=[pubmed_sensor],
+    sensors=[pubmed_sensor, automation_sensor],
     resources={
         "storage": OmicidxStorage(),
         "duckdb_res": DuckDBResource(),

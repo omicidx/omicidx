@@ -57,6 +57,7 @@ def _consolidate(
     tags={**_CONSOLIDATE_TAGS, "sla": "monthly"},
     deps=[geo_raw],
     retry_policy=dg.RetryPolicy(max_retries=1, delay=60),
+    automation_condition=dg.AutomationCondition.eager(),
 )
 def geo_platforms_parquet(
     context: dg.AssetExecutionContext,
@@ -97,6 +98,7 @@ def geo_platforms_parquet(
     tags={**_CONSOLIDATE_TAGS, "sla": "monthly"},
     deps=[geo_raw],
     retry_policy=dg.RetryPolicy(max_retries=1, delay=60),
+    automation_condition=dg.AutomationCondition.eager(),
 )
 def geo_series_parquet(
     context: dg.AssetExecutionContext,
@@ -136,6 +138,7 @@ def geo_series_parquet(
     tags={**_CONSOLIDATE_TAGS, "sla": "monthly"},
     deps=[geo_raw],
     retry_policy=dg.RetryPolicy(max_retries=1, delay=60),
+    automation_condition=dg.AutomationCondition.eager(),
 )
 def geo_samples_parquet(
     context: dg.AssetExecutionContext,
@@ -178,6 +181,7 @@ def geo_samples_parquet(
     tags={**_CONSOLIDATE_TAGS, "sla": "daily"},
     deps=["geo_rna_seq_counts"],
     retry_policy=dg.RetryPolicy(max_retries=1, delay=60),
+    automation_condition=dg.AutomationCondition.eager(),
 )
 def geo_rnaseq_counts_parquet(
     context: dg.AssetExecutionContext,
@@ -215,6 +219,7 @@ def geo_rnaseq_counts_parquet(
     tags={**_CONSOLIDATE_TAGS, "sla": "daily"},
     deps=[sra_raw],
     retry_policy=dg.RetryPolicy(max_retries=1, delay=60),
+    automation_condition=dg.AutomationCondition.eager(),
 )
 def sra_studies_parquet(
     context: dg.AssetExecutionContext,
@@ -256,6 +261,7 @@ def sra_studies_parquet(
     tags={**_CONSOLIDATE_TAGS, "sla": "daily"},
     deps=[sra_raw],
     retry_policy=dg.RetryPolicy(max_retries=1, delay=60),
+    automation_condition=dg.AutomationCondition.eager(),
 )
 def sra_samples_parquet(
     context: dg.AssetExecutionContext,
@@ -293,6 +299,7 @@ def sra_samples_parquet(
     tags={**_CONSOLIDATE_TAGS, "sla": "daily"},
     deps=[sra_raw],
     retry_policy=dg.RetryPolicy(max_retries=1, delay=60),
+    automation_condition=dg.AutomationCondition.eager(),
 )
 def sra_experiments_parquet(
     context: dg.AssetExecutionContext,
@@ -342,6 +349,7 @@ def sra_experiments_parquet(
     tags={**_CONSOLIDATE_TAGS, "sla": "daily"},
     deps=[sra_raw],
     retry_policy=dg.RetryPolicy(max_retries=1, delay=60),
+    automation_condition=dg.AutomationCondition.eager(),
 )
 def sra_runs_parquet(
     context: dg.AssetExecutionContext,
@@ -376,6 +384,7 @@ def sra_runs_parquet(
     kinds={"duckdb", "parquet", "s3"},
     tags={**_CONSOLIDATE_TAGS, "sla": "daily"},
     retry_policy=dg.RetryPolicy(max_retries=1, delay=60),
+    automation_condition=dg.AutomationCondition.on_cron("0 3 * * *"),
 )
 def sra_accessions_parquet(
     context: dg.AssetExecutionContext,
@@ -426,6 +435,7 @@ def sra_accessions_parquet(
     tags={**_CONSOLIDATE_TAGS, "sla": "daily"},
     deps=[biosample_raw],
     retry_policy=dg.RetryPolicy(max_retries=1, delay=60),
+    automation_condition=dg.AutomationCondition.eager(),
 )
 def biosample_parquet(
     context: dg.AssetExecutionContext,
@@ -476,6 +486,7 @@ def biosample_parquet(
     tags={**_CONSOLIDATE_TAGS, "sla": "daily"},
     deps=[pubmed_raw],
     retry_policy=dg.RetryPolicy(max_retries=1, delay=60),
+    automation_condition=dg.AutomationCondition.eager(),
 )
 def pubmed_parquet(
     context: dg.AssetExecutionContext,
