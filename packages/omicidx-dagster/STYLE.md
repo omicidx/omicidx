@@ -78,21 +78,27 @@ Use the smallest set that's true. Common combinations:
 - Prefer `dg.AutomationCondition` over `ScheduleDefinition` for asset-
   level triggers. Schedules exist for jobs that span multiple assets
   (`define_asset_job` + `ScheduleDefinition`).
+- **Default to `eager()` for downstream assets.** `eager()` already
+  includes "wait for upstream in-progress runs to complete" semantics,
+  so coalescing across a partitioned upstream is built in — no cron
+  needed for that. The SRA cascade demonstrates this: a non-partitioned
+  consolidate over a 4-partition upstream fires *once* after all
+  partitions land, not once per partition.
+- **Use `on_cron(...) & any_deps_updated()` only when** the asset is
+  the most expensive in its layer AND a re-fire (from upstream retry,
+  sensor flap, manual re-materialization) would be costly enough to
+  justify the explicit time-window guarantee. Currently this applies
+  to: `omicidx_duckdb` (multi-GB rebuild + R2 upload).
 - Cron strings are always 5-field crontab (`"0 2 * * *"`), never
   shorthand like `"@daily"`. Shorthand mixes with explicit crons make
   staggering hard to see.
-- Standard staggering for nightly cascade:
+- For change-driven *external* assets (e.g., remote files monitored by
+  ETag), prefer `etag_change_sensor` (in `factories.py`) plus
+  `dg.AutomationCondition.any_deps_updated()` over blind cron polling.
 
-| time | layer |
-|---|---|
-| `0 2 * * *` | raw extracts |
-| `0 3 * * *` | per-entity parquet consolidation |
-| `0 4 * * *` | postgres loads |
-| `0 5 * * *` | omicidx.duckdb build |
-
-- For change-driven assets, prefer `etag_change_sensor` (in
-  `factories.py`) plus `dg.AutomationCondition.any_deps_updated()`
-  over blind cron polling.
+For raw extracts, the `daily_extract_schedule` (`define_asset_job` +
+`ScheduleDefinition`) at 02:00 fires the entry points; everything
+downstream cascades via `eager()`.
 
 ## Retry policy
 

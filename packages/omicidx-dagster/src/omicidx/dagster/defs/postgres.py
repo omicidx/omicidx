@@ -845,13 +845,7 @@ FROM read_parquet('{path}')
     tags=_PG_TAGS,
     deps=[pubmed_parquet],
     retry_policy=dg.RetryPolicy(max_retries=1, delay=60),
-    # PubMed updates hourly upstream; A/B reload of the full table is
-    # too heavy to run more than once a day. Run after pubmed_parquet
-    # finishes, only if it actually rebuilt.
-    automation_condition=(
-        dg.AutomationCondition.on_cron("0 4 * * *")
-        & dg.AutomationCondition.any_deps_updated()
-    ),
+    automation_condition=dg.AutomationCondition.eager(),
 )
 def pubmed_postgres(
     context: dg.AssetExecutionContext,
