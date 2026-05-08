@@ -1,5 +1,7 @@
 """Assets that load consolidated Parquet data into PostgreSQL for the API."""
 
+import re
+
 from omicidx.dagster.defs.biosample import bioproject_parquet
 from omicidx.dagster.defs.consolidate import (
     biosample_parquet,
@@ -25,6 +27,16 @@ _PG_TAGS = {
 }
 
 
+def _validate_sql_identifier(name: str) -> str:
+    if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name):
+        raise ValueError(f"Invalid SQL identifier: {name!r}")
+    return name
+
+
+def _quote_sql_literal(value: str) -> str:
+    return value.replace("'", "''")
+
+
 def _get_live_backing_table(postgres: PostgresResource, view_name: str) -> str | None:
     """Check which backing table a view currently points to, or None if no view."""
     import asyncio
@@ -35,20 +47,31 @@ def _get_live_backing_table(postgres: PostgresResource, view_name: str) -> str |
     async def _check():
         engine = create_async_engine(postgres.async_uri)
         async with engine.begin() as conn:
-            result = await conn.execute(text(
-                "SELECT definition FROM pg_views WHERE viewname = :name"
-            ), {"name": view_name})
-            row = result.first()
+            slot_a = f"{view_name}_a"
+            slot_b = f"{view_name}_b"
+            result = await conn.execute(
+                text("""
+                    SELECT DISTINCT cls.relname
+                    FROM pg_class view_cls
+                    JOIN pg_namespace view_ns ON view_ns.oid = view_cls.relnamespace
+                    JOIN pg_rewrite rw ON rw.ev_class = view_cls.oid
+                    JOIN pg_depend dep ON dep.objid = rw.oid
+                    JOIN pg_class cls ON cls.oid = dep.refobjid
+                    WHERE view_cls.relkind = 'v'
+                      AND view_ns.nspname = 'public'
+                      AND view_cls.relname = :view_name
+                      AND cls.relkind IN ('r', 'p')
+                      AND (cls.relname = :slot_a OR cls.relname = :slot_b)
+                """),
+                {"view_name": view_name, "slot_a": slot_a, "slot_b": slot_b},
+            )
+            rows = result.fetchall()
         await engine.dispose()
-        if row is None:
+        if not rows:
             return None
-        defn = row[0]
-        # definition looks like: " SELECT ... FROM {table}_a;" or "{table}_b"
-        if f"{view_name}_b" in defn:
-            return f"{view_name}_b"
-        if f"{view_name}_a" in defn:
-            return f"{view_name}_a"
-        return None
+        if len(rows) > 1:
+            raise ValueError(f"View {view_name!r} references multiple backing tables")
+        return rows[0][0]
 
     return asyncio.run(_check())
 
@@ -72,7 +95,9 @@ def _load_to_postgres(
 
     CREATE OR REPLACE VIEW only takes AccessShareLock — reads never block.
     """
+    table = _validate_sql_identifier(table)
     parquet_path = storage.get_duckdb_path(*parquet_parts)
+    parquet_path_literal = _quote_sql_literal(parquet_path)
     tbl_a = f"{table}_a"
     tbl_b = f"{table}_b"
 
@@ -89,10 +114,13 @@ def _load_to_postgres(
         target_ddl,
     )
 
-    target_insert = insert_sql_template.replace(f"pg.{table}", f"pg.{target}")
+    source_table = f"pg.{table}"
+    if source_table not in insert_sql_template:
+        raise ValueError(f"Insert template must contain {source_table}")
+    target_insert = insert_sql_template.replace(source_table, f"pg.{target}")
     with duckdb_res.get_connection() as con, postgres.attach(con):
         context.log.info(f"Loading {target} from {parquet_path}")
-        con.execute(target_insert.format(path=parquet_path))
+        con.execute(target_insert.format(path=parquet_path_literal))
         row_count = con.execute(f"SELECT count(*) FROM pg.{target}").fetchone()[0]
 
     # Swap view to target, drop old backing table
