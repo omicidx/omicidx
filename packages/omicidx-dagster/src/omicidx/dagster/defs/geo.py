@@ -51,11 +51,14 @@ def _entrezid_to_geo(entrezid: str) -> str:
 
 
 @tenacity.retry(
-    wait=tenacity.wait_fixed(2),
-    stop=tenacity.stop_after_attempt(5),
+    wait=tenacity.wait_exponential_jitter(2, 60),
+    stop=tenacity.stop_after_attempt(8),
     retry=tenacity.retry_if_exception(
         lambda e: (
-            (isinstance(e, httpx.HTTPStatusError) and e.response.status_code in {429})
+            (
+                isinstance(e, httpx.HTTPStatusError)
+                and (e.response.status_code == 429 or 500 <= e.response.status_code < 600)
+            )
             or isinstance(
                 e,
                 httpx.RemoteProtocolError | httpx.ConnectError | httpx.TimeoutException,
@@ -93,6 +96,7 @@ async def _fetch_accessions(start_date: date, end_date: date) -> list[str]:
             if len(ids) < retmax:
                 break
             offset += retmax
+            await asyncio.sleep(0.4)
 
     return accessions
 
