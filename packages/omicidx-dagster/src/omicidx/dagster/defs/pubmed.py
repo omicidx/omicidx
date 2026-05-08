@@ -24,6 +24,24 @@ _XML_GZ_RE = re.compile(r"^(pubmed\d+n\d+)\.xml\.gz$")
 pubmed_partitions = dg.DynamicPartitionsDefinition(name="pubmed_files")
 
 
+def _sanitize_utf8(obj):
+    """Recursively replace invalid UTF-8 bytes in any string values.
+
+    PubMed XML occasionally carries Latin-1 / Windows-1252 bytes that
+    pubmed_parser surfaces as Python strings with surrogate-escaped bytes.
+    Those round-trip into the parquet but fail strict UTF-8 decoding
+    downstream (postgres COPY, JSON serialization). This pass replaces
+    invalid bytes with U+FFFD so the data stays loadable.
+    """
+    if isinstance(obj, str):
+        return obj.encode("utf-8", errors="replace").decode("utf-8")
+    if isinstance(obj, dict):
+        return {k: _sanitize_utf8(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_sanitize_utf8(v) for v in obj]
+    return obj
+
+
 def _list_pubmed_files() -> dict[str, str]:
     """List PubMed XML files via HTTPS. Returns {partition_key: url_string}."""
     result: dict[str, str] = {}
@@ -87,6 +105,7 @@ def pubmed_raw(
             obj["_inserted_at"] = datetime.now()
             obj["_read_from"] = str(url)
 
+        articles = [_sanitize_utf8(a) for a in articles]
         table = pa.Table.from_pylist(articles)
         pq.write_table(table, tmp_parquet.name, compression="zstd")
 
