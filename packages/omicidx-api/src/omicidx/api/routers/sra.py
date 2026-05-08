@@ -45,7 +45,9 @@ async def list_studies(
     date_from: date | None = None,
     date_to: date | None = None,
     cursor: str | None = None,
-    limit: Annotated[int, Query(ge=1, le=settings.max_page_size)] = settings.default_page_size,
+    limit: Annotated[
+        int, Query(ge=1, le=settings.max_page_size)
+    ] = settings.default_page_size,
 ):
     stmt = select(SraStudy).order_by(SraStudy.accession).limit(limit + 1)
 
@@ -67,8 +69,11 @@ async def list_studies(
     next_cursor = encode_cursor(rows[limit - 1].accession) if has_next else None
 
     return build_list_response(
-        items=items, path="/v1/sra/studies", limit=limit,
-        next_cursor=next_cursor, cursor_param=cursor,
+        items=items,
+        path="/v1/sra/studies",
+        limit=limit,
+        next_cursor=next_cursor,
+        cursor_param=cursor,
     )
 
 
@@ -96,7 +101,9 @@ async def list_samples(
     organism: str | None = None,
     tax_id: int | None = None,
     cursor: str | None = None,
-    limit: Annotated[int, Query(ge=1, le=settings.max_page_size)] = settings.default_page_size,
+    limit: Annotated[
+        int, Query(ge=1, le=settings.max_page_size)
+    ] = settings.default_page_size,
 ):
     stmt = select(SraSample).order_by(SraSample.accession).limit(limit + 1)
 
@@ -114,8 +121,11 @@ async def list_samples(
     next_cursor = encode_cursor(rows[limit - 1].accession) if has_next else None
 
     return build_list_response(
-        items=items, path="/v1/sra/samples", limit=limit,
-        next_cursor=next_cursor, cursor_param=cursor,
+        items=items,
+        path="/v1/sra/samples",
+        limit=limit,
+        next_cursor=next_cursor,
+        cursor_param=cursor,
     )
 
 
@@ -150,7 +160,9 @@ async def list_experiments(
     library_source: str | None = None,
     platform: str | None = None,
     cursor: str | None = None,
-    limit: Annotated[int, Query(ge=1, le=settings.max_page_size)] = settings.default_page_size,
+    limit: Annotated[
+        int, Query(ge=1, le=settings.max_page_size)
+    ] = settings.default_page_size,
 ):
     stmt = select(SraExperiment).order_by(SraExperiment.accession).limit(limit + 1)
 
@@ -170,8 +182,11 @@ async def list_experiments(
     next_cursor = encode_cursor(rows[limit - 1].accession) if has_next else None
 
     return build_list_response(
-        items=items, path="/v1/sra/experiments", limit=limit,
-        next_cursor=next_cursor, cursor_param=cursor,
+        items=items,
+        path="/v1/sra/experiments",
+        limit=limit,
+        next_cursor=next_cursor,
+        cursor_param=cursor,
     )
 
 
@@ -199,7 +214,9 @@ async def list_runs(
     session: Session,
     experiment_accession: str | None = None,
     cursor: str | None = None,
-    limit: Annotated[int, Query(ge=1, le=settings.max_page_size)] = settings.default_page_size,
+    limit: Annotated[
+        int, Query(ge=1, le=settings.max_page_size)
+    ] = settings.default_page_size,
 ):
     stmt = select(SraRun).order_by(SraRun.accession).limit(limit + 1)
 
@@ -215,6 +232,9 @@ async def list_runs(
     next_cursor = encode_cursor(rows[limit - 1].accession) if has_next else None
 
     return build_list_response(
-        items=items, path="/v1/sra/runs", limit=limit,
-        next_cursor=next_cursor, cursor_param=cursor,
+        items=items,
+        path="/v1/sra/runs",
+        limit=limit,
+        next_cursor=next_cursor,
+        cursor_param=cursor,
     )

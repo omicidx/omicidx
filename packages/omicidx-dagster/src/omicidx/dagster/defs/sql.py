@@ -4,13 +4,19 @@ Builds the omicidx.duckdb file from consolidated parquet views (020-050 SQL).
 The consolidation step is now handled by per-entity assets in consolidate.py.
 """
 
+from __future__ import annotations
+
 import json
 import shutil
 from datetime import datetime
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import sqlglot
 from omicidx.dagster.resources import DuckDBResource, OmicidxStorage
+
+if TYPE_CHECKING:
+    import duckdb
 
 import dagster as dg
 
@@ -38,7 +44,7 @@ def _q(value: str) -> str:
 
 def _run_sql_file(
     name: str,
-    con: "duckdb.DuckDBPyConnection",
+    con: duckdb.DuckDBPyConnection,
     context: dg.AssetExecutionContext,
 ) -> None:
     """Run a SQL file, executing each statement individually."""

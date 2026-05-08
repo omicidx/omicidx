@@ -26,7 +26,9 @@ async def get_bioproject(accession: str, session: Session):
 async def list_bioprojects(
     session: Session,
     cursor: str | None = None,
-    limit: Annotated[int, Query(ge=1, le=settings.max_page_size)] = settings.default_page_size,
+    limit: Annotated[
+        int, Query(ge=1, le=settings.max_page_size)
+    ] = settings.default_page_size,
 ):
     stmt = select(BioProject).order_by(BioProject.accession).limit(limit + 1)
 

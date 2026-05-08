@@ -10,14 +10,15 @@ import shutil
 import tempfile
 from datetime import date, datetime, timedelta
 
-import dagster as dg
 import httpx
 import polars as pl
 import tenacity
 from dateutil.relativedelta import relativedelta
-from omicidx.parsers.geo import parser as gp
 from omicidx.dagster.resources import OmicidxStorage
+from omicidx.parsers.geo import parser as gp
 from upath import UPath
+
+import dagster as dg
 
 geo_monthly_partitions = dg.MonthlyPartitionsDefinition(
     start_date="2005-01-01",
@@ -62,9 +63,7 @@ def _entrezid_to_geo(entrezid: str) -> str:
         )
     ),
 )
-async def _fetch_accessions(
-    start_date: date, end_date: date
-) -> list[str]:
+async def _fetch_accessions(start_date: date, end_date: date) -> list[str]:
     """Query Entrez eutils for GEO accessions updated in a date range."""
     accessions = []
     offset = 0
@@ -77,7 +76,7 @@ async def _fetch_accessions(
                 params={
                     "db": "gds",
                     "term": (
-                        f'(GSM[etyp] OR GSE[etyp] OR GPL[etyp]) AND '
+                        f"(GSM[etyp] OR GSE[etyp] OR GPL[etyp]) AND "
                         f'("{start_date.strftime("%Y/%m/%d")}"[Update Date] : '
                         f'"{end_date.strftime("%Y/%m/%d")}"[Update Date])'
                     ),
@@ -210,6 +209,7 @@ def geo_rna_seq_counts(
                 break
             offset += retmax
             import time
+
             time.sleep(0.5)
 
     df = pl.DataFrame(accessions)
@@ -292,7 +292,8 @@ def geo_raw(
         counts = {}
         for prefix, entity in [("GSE", "gse"), ("GSM", "gsm"), ("GPL", "gpl")]:
             path = (
-                output_base / entity
+                output_base
+                / entity
                 / f"year={start_date.strftime('%Y')}"
                 / f"month={start_date.strftime('%m')}"
                 / "data_0.ndjson.gz"
@@ -309,14 +310,14 @@ def geo_raw(
     parsed = asyncio.run(_fetch_and_parse_accessions(accessions))
 
     # 3. Write each entity type
-    metadata = {}
     for prefix, entity, output_name in [
         ("GSE", "gse", "geo_gse_raw"),
         ("GSM", "gsm", "geo_gsm_raw"),
         ("GPL", "gpl", "geo_gpl_raw"),
     ]:
         path = (
-            output_base / entity
+            output_base
+            / entity
             / f"year={start_date.strftime('%Y')}"
             / f"month={start_date.strftime('%m')}"
             / "data_0.ndjson.gz"

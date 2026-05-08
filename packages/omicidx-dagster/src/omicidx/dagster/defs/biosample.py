@@ -9,13 +9,14 @@ import shutil
 import tempfile
 import time
 
-import dagster as dg
 import httpx
 import orjson
 import tenacity
-from omicidx.parsers.biosample import BioProjectParser, BioSampleParser
 from omicidx.dagster.resources import DuckDBResource, OmicidxStorage
+from omicidx.parsers.biosample import BioProjectParser, BioSampleParser
 from upath import UPath
+
+import dagster as dg
 
 BIOSAMPLE_URL = "https://ftp.ncbi.nlm.nih.gov/biosample/biosample_set.xml.gz"
 BIOPROJECT_URL = "https://ftp.ncbi.nlm.nih.gov/bioproject/bioproject.xml"
@@ -60,9 +61,7 @@ def _extract_entity(
 
         open_fn = gzip.open if use_gzip_input else open
 
-        with tempfile.NamedTemporaryFile(
-            suffix=".jsonl.gz", delete=False
-        ) as out_tmp:
+        with tempfile.NamedTemporaryFile(suffix=".jsonl.gz", delete=False) as out_tmp:
             out_tmp_path = out_tmp.name
 
         try:
@@ -176,7 +175,9 @@ def bioproject_parquet(
 ) -> dg.MaterializeResult:
     """Convert BioProject JSONL to Parquet using DuckDB."""
     input_path = storage.get_duckdb_path("bioproject", "raw", "data.jsonl.gz")
-    output_path = storage.get_duckdb_path("bioproject", "parquet", "bioprojects.parquet")
+    output_path = storage.get_duckdb_path(
+        "bioproject", "parquet", "bioprojects.parquet"
+    )
 
     sql = f"""
         COPY (

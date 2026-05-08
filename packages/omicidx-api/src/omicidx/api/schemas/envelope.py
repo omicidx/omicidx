@@ -50,7 +50,11 @@ def build_list_response(
     base = path.split("?")[0]
 
     next_link = f"{base}?cursor={next_cursor}&limit={limit}" if next_cursor else None
-    self_link = f"{base}?cursor={cursor_param}&limit={limit}" if cursor_param else f"{base}?limit={limit}"
+    self_link = (
+        f"{base}?cursor={cursor_param}&limit={limit}"
+        if cursor_param
+        else f"{base}?limit={limit}"
+    )
 
     return {
         "data": items,
@@ -77,7 +81,5 @@ def build_item_response(
     """Build a single-item envelope dict."""
     result: dict[str, Any] = {"data": item}
     if relationships:
-        result["relationships"] = {
-            k: v.model_dump() for k, v in relationships.items()
-        }
+        result["relationships"] = {k: v.model_dump() for k, v in relationships.items()}
     return result

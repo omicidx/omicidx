@@ -44,7 +44,9 @@ async def list_biosamples(
     date_from: date | None = None,
     date_to: date | None = None,
     cursor: str | None = None,
-    limit: Annotated[int, Query(ge=1, le=settings.max_page_size)] = settings.default_page_size,
+    limit: Annotated[
+        int, Query(ge=1, le=settings.max_page_size)
+    ] = settings.default_page_size,
 ):
     stmt = select(BioSample).order_by(BioSample.accession).limit(limit + 1)
 

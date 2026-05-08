@@ -227,17 +227,25 @@ FROM read_parquet('{path}')
 
 
 @dg.asset(
-    group_name="postgres", kinds={"postgres", "duckdb"}, tags=_PG_TAGS,
+    group_name="postgres",
+    kinds={"postgres", "duckdb"},
+    tags=_PG_TAGS,
     deps=[bioproject_parquet],
     retry_policy=dg.RetryPolicy(max_retries=1, delay=60),
 )
 def bioproject_postgres(
-    context: dg.AssetExecutionContext, storage: OmicidxStorage,
-    duckdb_res: DuckDBResource, postgres: PostgresResource,
+    context: dg.AssetExecutionContext,
+    storage: OmicidxStorage,
+    duckdb_res: DuckDBResource,
+    postgres: PostgresResource,
 ) -> dg.MaterializeResult:
     return _load_to_postgres(
-        context=context, storage=storage, duckdb_res=duckdb_res, postgres=postgres,
-        table="bioproject", ddl=_BIOPROJECT_DDL,
+        context=context,
+        storage=storage,
+        duckdb_res=duckdb_res,
+        postgres=postgres,
+        table="bioproject",
+        ddl=_BIOPROJECT_DDL,
         parquet_parts=("bioproject", "parquet", "bioprojects.parquet"),
         insert_sql_template=_BIOPROJECT_INSERT,
     )
@@ -284,17 +292,25 @@ FROM read_parquet('{path}')
 
 
 @dg.asset(
-    group_name="postgres", kinds={"postgres", "duckdb"}, tags=_PG_TAGS,
+    group_name="postgres",
+    kinds={"postgres", "duckdb"},
+    tags=_PG_TAGS,
     deps=[biosample_parquet],
     retry_policy=dg.RetryPolicy(max_retries=1, delay=60),
 )
 def biosample_postgres(
-    context: dg.AssetExecutionContext, storage: OmicidxStorage,
-    duckdb_res: DuckDBResource, postgres: PostgresResource,
+    context: dg.AssetExecutionContext,
+    storage: OmicidxStorage,
+    duckdb_res: DuckDBResource,
+    postgres: PostgresResource,
 ) -> dg.MaterializeResult:
     return _load_to_postgres(
-        context=context, storage=storage, duckdb_res=duckdb_res, postgres=postgres,
-        table="biosample", ddl=_BIOSAMPLE_DDL,
+        context=context,
+        storage=storage,
+        duckdb_res=duckdb_res,
+        postgres=postgres,
+        table="biosample",
+        ddl=_BIOSAMPLE_DDL,
         parquet_parts=("biosample", "parquet", "biosamples.parquet"),
         insert_sql_template=_BIOSAMPLE_INSERT,
     )
@@ -337,17 +353,25 @@ FROM read_parquet('{path}')
 
 
 @dg.asset(
-    group_name="postgres", kinds={"postgres", "duckdb"}, tags=_PG_TAGS,
+    group_name="postgres",
+    kinds={"postgres", "duckdb"},
+    tags=_PG_TAGS,
     deps=[sra_studies_parquet],
     retry_policy=dg.RetryPolicy(max_retries=1, delay=60),
 )
 def sra_study_postgres(
-    context: dg.AssetExecutionContext, storage: OmicidxStorage,
-    duckdb_res: DuckDBResource, postgres: PostgresResource,
+    context: dg.AssetExecutionContext,
+    storage: OmicidxStorage,
+    duckdb_res: DuckDBResource,
+    postgres: PostgresResource,
 ) -> dg.MaterializeResult:
     return _load_to_postgres(
-        context=context, storage=storage, duckdb_res=duckdb_res, postgres=postgres,
-        table="sra_study", ddl=_SRA_STUDY_DDL,
+        context=context,
+        storage=storage,
+        duckdb_res=duckdb_res,
+        postgres=postgres,
+        table="sra_study",
+        ddl=_SRA_STUDY_DDL,
         parquet_parts=("sra", "parquet", "sra_studies.parquet"),
         insert_sql_template=_SRA_STUDY_INSERT,
     )
@@ -388,17 +412,25 @@ FROM read_parquet('{path}')
 
 
 @dg.asset(
-    group_name="postgres", kinds={"postgres", "duckdb"}, tags=_PG_TAGS,
+    group_name="postgres",
+    kinds={"postgres", "duckdb"},
+    tags=_PG_TAGS,
     deps=[sra_samples_parquet],
     retry_policy=dg.RetryPolicy(max_retries=1, delay=60),
 )
 def sra_sample_postgres(
-    context: dg.AssetExecutionContext, storage: OmicidxStorage,
-    duckdb_res: DuckDBResource, postgres: PostgresResource,
+    context: dg.AssetExecutionContext,
+    storage: OmicidxStorage,
+    duckdb_res: DuckDBResource,
+    postgres: PostgresResource,
 ) -> dg.MaterializeResult:
     return _load_to_postgres(
-        context=context, storage=storage, duckdb_res=duckdb_res, postgres=postgres,
-        table="sra_sample", ddl=_SRA_SAMPLE_DDL,
+        context=context,
+        storage=storage,
+        duckdb_res=duckdb_res,
+        postgres=postgres,
+        table="sra_sample",
+        ddl=_SRA_SAMPLE_DDL,
         parquet_parts=("sra", "parquet", "sra_samples.parquet"),
         insert_sql_template=_SRA_SAMPLE_INSERT,
     )
@@ -452,17 +484,25 @@ FROM read_parquet('{path}')
 
 
 @dg.asset(
-    group_name="postgres", kinds={"postgres", "duckdb"}, tags=_PG_TAGS,
+    group_name="postgres",
+    kinds={"postgres", "duckdb"},
+    tags=_PG_TAGS,
     deps=[sra_experiments_parquet],
     retry_policy=dg.RetryPolicy(max_retries=1, delay=60),
 )
 def sra_experiment_postgres(
-    context: dg.AssetExecutionContext, storage: OmicidxStorage,
-    duckdb_res: DuckDBResource, postgres: PostgresResource,
+    context: dg.AssetExecutionContext,
+    storage: OmicidxStorage,
+    duckdb_res: DuckDBResource,
+    postgres: PostgresResource,
 ) -> dg.MaterializeResult:
     return _load_to_postgres(
-        context=context, storage=storage, duckdb_res=duckdb_res, postgres=postgres,
-        table="sra_experiment", ddl=_SRA_EXPERIMENT_DDL,
+        context=context,
+        storage=storage,
+        duckdb_res=duckdb_res,
+        postgres=postgres,
+        table="sra_experiment",
+        ddl=_SRA_EXPERIMENT_DDL,
         parquet_parts=("sra", "parquet", "sra_experiments.parquet"),
         insert_sql_template=_SRA_EXPERIMENT_INSERT,
     )
@@ -500,17 +540,25 @@ FROM read_parquet('{path}')
 
 
 @dg.asset(
-    group_name="postgres", kinds={"postgres", "duckdb"}, tags=_PG_TAGS,
+    group_name="postgres",
+    kinds={"postgres", "duckdb"},
+    tags=_PG_TAGS,
     deps=[sra_runs_parquet],
     retry_policy=dg.RetryPolicy(max_retries=1, delay=60),
 )
 def sra_run_postgres(
-    context: dg.AssetExecutionContext, storage: OmicidxStorage,
-    duckdb_res: DuckDBResource, postgres: PostgresResource,
+    context: dg.AssetExecutionContext,
+    storage: OmicidxStorage,
+    duckdb_res: DuckDBResource,
+    postgres: PostgresResource,
 ) -> dg.MaterializeResult:
     return _load_to_postgres(
-        context=context, storage=storage, duckdb_res=duckdb_res, postgres=postgres,
-        table="sra_run", ddl=_SRA_RUN_DDL,
+        context=context,
+        storage=storage,
+        duckdb_res=duckdb_res,
+        postgres=postgres,
+        table="sra_run",
+        ddl=_SRA_RUN_DDL,
         parquet_parts=("sra", "parquet", "sra_runs.parquet"),
         insert_sql_template=_SRA_RUN_INSERT,
     )
@@ -559,17 +607,25 @@ FROM read_parquet('{path}')
 
 
 @dg.asset(
-    group_name="postgres", kinds={"postgres", "duckdb"}, tags=_PG_TAGS,
+    group_name="postgres",
+    kinds={"postgres", "duckdb"},
+    tags=_PG_TAGS,
     deps=[geo_series_parquet],
     retry_policy=dg.RetryPolicy(max_retries=1, delay=60),
 )
 def geo_series_postgres(
-    context: dg.AssetExecutionContext, storage: OmicidxStorage,
-    duckdb_res: DuckDBResource, postgres: PostgresResource,
+    context: dg.AssetExecutionContext,
+    storage: OmicidxStorage,
+    duckdb_res: DuckDBResource,
+    postgres: PostgresResource,
 ) -> dg.MaterializeResult:
     return _load_to_postgres(
-        context=context, storage=storage, duckdb_res=duckdb_res, postgres=postgres,
-        table="geo_series", ddl=_GEO_SERIES_DDL,
+        context=context,
+        storage=storage,
+        duckdb_res=duckdb_res,
+        postgres=postgres,
+        table="geo_series",
+        ddl=_GEO_SERIES_DDL,
         parquet_parts=("geo", "parquet", "geo_series.parquet"),
         insert_sql_template=_GEO_SERIES_INSERT,
     )
@@ -618,17 +674,25 @@ FROM read_parquet('{path}')
 
 
 @dg.asset(
-    group_name="postgres", kinds={"postgres", "duckdb"}, tags=_PG_TAGS,
+    group_name="postgres",
+    kinds={"postgres", "duckdb"},
+    tags=_PG_TAGS,
     deps=[geo_samples_parquet],
     retry_policy=dg.RetryPolicy(max_retries=1, delay=60),
 )
 def geo_sample_postgres(
-    context: dg.AssetExecutionContext, storage: OmicidxStorage,
-    duckdb_res: DuckDBResource, postgres: PostgresResource,
+    context: dg.AssetExecutionContext,
+    storage: OmicidxStorage,
+    duckdb_res: DuckDBResource,
+    postgres: PostgresResource,
 ) -> dg.MaterializeResult:
     return _load_to_postgres(
-        context=context, storage=storage, duckdb_res=duckdb_res, postgres=postgres,
-        table="geo_sample", ddl=_GEO_SAMPLE_DDL,
+        context=context,
+        storage=storage,
+        duckdb_res=duckdb_res,
+        postgres=postgres,
+        table="geo_sample",
+        ddl=_GEO_SAMPLE_DDL,
         parquet_parts=("geo", "parquet", "geo_samples.parquet"),
         insert_sql_template=_GEO_SAMPLE_INSERT,
     )
@@ -666,17 +730,25 @@ FROM read_parquet('{path}')
 
 
 @dg.asset(
-    group_name="postgres", kinds={"postgres", "duckdb"}, tags=_PG_TAGS,
+    group_name="postgres",
+    kinds={"postgres", "duckdb"},
+    tags=_PG_TAGS,
     deps=[geo_platforms_parquet],
     retry_policy=dg.RetryPolicy(max_retries=1, delay=60),
 )
 def geo_platform_postgres(
-    context: dg.AssetExecutionContext, storage: OmicidxStorage,
-    duckdb_res: DuckDBResource, postgres: PostgresResource,
+    context: dg.AssetExecutionContext,
+    storage: OmicidxStorage,
+    duckdb_res: DuckDBResource,
+    postgres: PostgresResource,
 ) -> dg.MaterializeResult:
     return _load_to_postgres(
-        context=context, storage=storage, duckdb_res=duckdb_res, postgres=postgres,
-        table="geo_platform", ddl=_GEO_PLATFORM_DDL,
+        context=context,
+        storage=storage,
+        duckdb_res=duckdb_res,
+        postgres=postgres,
+        table="geo_platform",
+        ddl=_GEO_PLATFORM_DDL,
         parquet_parts=("geo", "parquet", "geo_platforms.parquet"),
         insert_sql_template=_GEO_PLATFORM_INSERT,
     )
@@ -720,17 +792,25 @@ FROM read_parquet('{path}')
 
 
 @dg.asset(
-    group_name="postgres", kinds={"postgres", "duckdb"}, tags=_PG_TAGS,
+    group_name="postgres",
+    kinds={"postgres", "duckdb"},
+    tags=_PG_TAGS,
     deps=[pubmed_parquet],
     retry_policy=dg.RetryPolicy(max_retries=1, delay=60),
 )
 def pubmed_postgres(
-    context: dg.AssetExecutionContext, storage: OmicidxStorage,
-    duckdb_res: DuckDBResource, postgres: PostgresResource,
+    context: dg.AssetExecutionContext,
+    storage: OmicidxStorage,
+    duckdb_res: DuckDBResource,
+    postgres: PostgresResource,
 ) -> dg.MaterializeResult:
     return _load_to_postgres(
-        context=context, storage=storage, duckdb_res=duckdb_res, postgres=postgres,
-        table="pubmed_article", ddl=_PUBMED_DDL,
+        context=context,
+        storage=storage,
+        duckdb_res=duckdb_res,
+        postgres=postgres,
+        table="pubmed_article",
+        ddl=_PUBMED_DDL,
         parquet_parts=("pubmed", "parquet", "pubmed_articles.parquet"),
         insert_sql_template=_PUBMED_INSERT,
     )

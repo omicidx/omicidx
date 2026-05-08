@@ -30,7 +30,9 @@ async def list_articles(
     date_from: date | None = None,
     date_to: date | None = None,
     cursor: str | None = None,
-    limit: Annotated[int, Query(ge=1, le=settings.max_page_size)] = settings.default_page_size,
+    limit: Annotated[
+        int, Query(ge=1, le=settings.max_page_size)
+    ] = settings.default_page_size,
 ):
     stmt = select(PubMedArticle).order_by(PubMedArticle.pmid).limit(limit + 1)
 
@@ -50,6 +52,9 @@ async def list_articles(
     next_cursor = encode_cursor(rows[limit - 1].pmid) if has_next else None
 
     return build_list_response(
-        items=items, path="/v1/pubmed", limit=limit,
-        next_cursor=next_cursor, cursor_param=cursor,
+        items=items,
+        path="/v1/pubmed",
+        limit=limit,
+        next_cursor=next_cursor,
+        cursor_param=cursor,
     )
