@@ -71,7 +71,7 @@ class GEOChannel(BaseModel):
 class GEOSample(GEOBase):
     type: str
     anchor: str | None = None
-    _entity: None
+    _entity: str = "GSM"
     contact: GEOContact | None = None
     description: str | None = None
     accession: Annotated[str, Field(pattern=r"GSM[0-9]+")]

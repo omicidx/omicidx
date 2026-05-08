@@ -41,8 +41,7 @@ class BaseQualityCount(BaseModel):
     count: int = 0
 
 
-class BaseQualities(BaseModel):
-    pass
+BaseQualities = list[BaseQualityCount]
 
 
 class TaxCountEntry(BaseModel):
@@ -68,8 +67,7 @@ class RunRead(BaseModel):
     sd_length: float = 0.0
 
 
-class BaseCounts(BaseModel):  # (List[Dict[str, int]]):
-    pass
+BaseCounts = list[dict[str, int]]
 
 
 class LiveList(BaseModel):
@@ -122,7 +120,7 @@ class SraStudy(LiveList, BaseModel):
 
 class SraExperiment(LiveList, BaseModel):
     accession: str
-    attributes: list[Attribute] = None
+    attributes: list[Attribute] = []
     alias: str | None = None
     center_name: str | None = None
     design: str | None = None

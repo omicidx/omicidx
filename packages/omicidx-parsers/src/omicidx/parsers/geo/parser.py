@@ -474,17 +474,15 @@ def _parse_single_gsm_soft(d2):
         if k.startswith("supplementa"):
             supp_files += d2[k]
             del d2[k]
-    d2["supplemental_files"] = supp_files
-    if supp_files[0] == "NONE":
+    if supp_files == ["NONE"]:
         supp_files = []
+    d2["supplemental_files"] = supp_files
     d2["_entity"] = "GSM"
     d2 = _fix_date_fields(d2)
     # Collapse protocol fields into single string
     for k in filter(lambda k: k.endswith("protocol"), d2.keys()):
         if isinstance(d2[k], list):
             d2[k] = " ".join(d2[k])
-    if "contributor" in d2:
-        d2["contributor"] = _split_contributor_names(d2["contributor"])
     return pydantic_models.GEOSample(**d2)
 
 
