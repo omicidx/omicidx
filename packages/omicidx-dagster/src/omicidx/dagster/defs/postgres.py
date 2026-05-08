@@ -60,6 +60,8 @@ def _get_live_backing_table(postgres: PostgresResource, view_name: str) -> str |
             slot_b = f"{view_name}_b"
             result = await conn.execute(
                 text("""
+                    -- Trace view dependencies through rewrite rules to find
+                    -- the underlying physical table backing the view.
                     SELECT DISTINCT cls.relname
                     FROM pg_class view_cls
                     JOIN pg_namespace view_ns ON view_ns.oid = view_cls.relnamespace
@@ -79,7 +81,10 @@ def _get_live_backing_table(postgres: PostgresResource, view_name: str) -> str |
         if not rows:
             return None
         if len(rows) > 1:
-            raise ValueError(f"View {view_name!r} references multiple backing tables")
+            table_names = ", ".join(row[0] for row in rows)
+            raise ValueError(
+                f"View {view_name!r} references multiple backing tables: {table_names}"
+            )
         return rows[0][0]
 
     return asyncio.run(_check())
