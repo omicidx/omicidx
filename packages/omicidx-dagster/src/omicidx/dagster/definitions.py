@@ -19,6 +19,8 @@ from omicidx.dagster.defs.consolidate import (  # noqa: E402
     geo_samples_parquet,
     geo_series_parquet,
     pubmed_parquet,
+    sra_accessions_etag_sensor,
+    sra_accessions_external,
     sra_accessions_parquet,
     sra_experiments_parquet,
     sra_runs_parquet,
@@ -127,6 +129,7 @@ defs = dg.Definitions(
         sra_samples_parquet,
         sra_experiments_parquet,
         sra_runs_parquet,
+        sra_accessions_external,
         sra_accessions_parquet,
         pubmed_parquet,
         # DuckDB build
@@ -144,7 +147,7 @@ defs = dg.Definitions(
         pubmed_postgres,
     ],
     schedules=[daily_extract_schedule, daily_geo_schedule],
-    sensors=[pubmed_sensor, automation_sensor],
+    sensors=[pubmed_sensor, automation_sensor, sra_accessions_etag_sensor],
     resources={
         "storage": OmicidxStorage(),
         "duckdb_res": DuckDBResource(),

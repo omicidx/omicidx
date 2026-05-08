@@ -9,6 +9,7 @@ from omicidx.dagster.defs.biosample import biosample_raw
 from omicidx.dagster.defs.geo import geo_raw
 from omicidx.dagster.defs.pubmed import pubmed_raw
 from omicidx.dagster.defs.sra import sra_raw
+from omicidx.dagster.factories import etag_change_sensor
 from omicidx.dagster.resources import DuckDBResource, OmicidxStorage
 
 import dagster as dg
@@ -19,6 +20,25 @@ _CONSOLIDATE_TAGS = {
     "source": "derived",
     "storage": "parquet",
 }
+
+# External asset + ETag sensor for SRA_Accessions.tab. The sensor materializes
+# the external asset whenever NCBI updates the file's ETag; the eager() rule
+# on sra_accessions_parquet then fires the ingest. Replaces the previous
+# blind-cron pattern. See STYLE.md "Automation".
+_SRA_ACCESSIONS_URL = "https://ftp.ncbi.nlm.nih.gov/sra/reports/Metadata/SRA_Accessions.tab"
+
+sra_accessions_external = dg.AssetSpec(
+    key="sra_accessions_tab",
+    group_name="consolidate",
+    description=f"External: SRA_Accessions.tab at {_SRA_ACCESSIONS_URL}",
+    metadata={"url": dg.MetadataValue.url(_SRA_ACCESSIONS_URL)},
+)
+
+sra_accessions_etag_sensor = etag_change_sensor(
+    url=_SRA_ACCESSIONS_URL,
+    asset_key="sra_accessions_tab",
+    minimum_interval_seconds=60 * 60,
+)
 
 
 def _consolidate(
@@ -395,15 +415,17 @@ def sra_runs_parquet(
     group_name="consolidate",
     kinds={"duckdb", "parquet", "s3"},
     tags={**_CONSOLIDATE_TAGS, "sla": "daily"},
+    deps=[sra_accessions_external],
     retry_policy=dg.RetryPolicy(max_retries=1, delay=60),
-    automation_condition=dg.AutomationCondition.on_cron("0 3 * * *"),
+    automation_condition=dg.AutomationCondition.eager(),
 )
 def sra_accessions_parquet(
     context: dg.AssetExecutionContext,
     duckdb_res: DuckDBResource,
     storage: OmicidxStorage,
 ) -> dg.MaterializeResult:
-    """Consolidate SRA_Accessions.tab from NCBI FTP (no upstream asset dependency)."""
+    """Ingest SRA_Accessions.tab into Parquet. Fires when the ETag sensor
+    detects a change at the upstream URL."""
     output = storage.get_duckdb_path("sra", "parquet", "sra_accessions.parquet")
     sql = f"""
         COPY (
@@ -424,7 +446,7 @@ def sra_accessions_parquet(
                 trim("BioProject") as bioproject,
                 trim("ReplacedBy") as replacedby
             FROM read_csv_auto(
-                'https://ftp.ncbi.nlm.nih.gov/sra/reports/Metadata/SRA_Accessions.tab',
+                '{_SRA_ACCESSIONS_URL}',
                 nullstr = '-'
             )
         ) TO '{output}' (FORMAT PARQUET, COMPRESSION ZSTD)

@@ -136,7 +136,7 @@ def remote_tsv_to_parquet(
     )
 
     asset_tags = {"source": "remote", "storage": "parquet", **(tags or {})}
-    automation = automation_condition or dg.AutomationCondition.any_deps_updated()
+    automation = automation_condition or dg.AutomationCondition.eager()
 
     @dg.asset(
         name=asset_name,
