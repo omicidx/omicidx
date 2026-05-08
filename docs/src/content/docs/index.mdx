@@ -1,0 +1,44 @@
+---
+title: OmicIDX
+description: Public, queryable index of NCBI SRA, GEO, BioSample, BioProject, PubMed, and EBI BioSamples metadata.
+template: splash
+hero:
+  tagline: A unified, queryable index of biological metadata across NCBI, EBI, and PubMed — built for researchers.
+  actions:
+    - text: API reference
+      link: /api/reference/
+      icon: right-arrow
+    - text: View on GitHub
+      link: https://github.com/omicidx/omicidx
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid } from "@astrojs/starlight/components";
+
+## What you can do here
+
+<CardGrid stagger>
+  <Card title="Query the API" icon="rocket">
+    Hit `https://api-omicidx.cancerdatasci.org` with curl, Python, or R. The
+    [API reference](/api/reference/) is auto-generated from the live OpenAPI
+    spec.
+  </Card>
+  <Card title="Understand the data" icon="document">
+    [Overview](/overview/what-is-omicidx/) of what OmicIDX indexes and where it
+    pulls from.
+  </Card>
+  <Card title="See the architecture" icon="setting">
+    How [raw NCBI/EBI feeds become a queryable
+    index](/overview/architecture/) — Dagster → DuckDB → PostgreSQL → REST.
+  </Card>
+  <Card title="Contribute" icon="open-book">
+    The [contributor guide](/contributing/architecture/) covers the ETL
+    internals and the [automation cadence](/contributing/automation-cadence/)
+    pattern that drives the daily refresh.
+  </Card>
+</CardGrid>
+
+## Status
+
+These docs are early — the framework is in place, content is being written. Sections marked 🚧 are stubs. Track progress in the [GitHub issues](https://github.com/omicidx/omicidx/issues).
