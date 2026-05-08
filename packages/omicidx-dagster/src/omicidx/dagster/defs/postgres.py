@@ -136,7 +136,10 @@ def _load_to_postgres(
 
     source_table = f"pg.{table}"
     if source_table not in insert_sql_template:
-        raise ValueError(f"Insert template must contain {source_table}")
+        raise ValueError(
+            f"Insert template must contain {source_table} so loads can be redirected "
+            "to the inactive A/B backing table."
+        )
     target_insert = insert_sql_template.replace(source_table, f"pg.{target}")
     with duckdb_res.get_connection() as con, postgres.attach(con):
         context.log.info(f"Loading {target} from {parquet_path}")
