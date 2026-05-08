@@ -33,8 +33,12 @@ def _validate_sql_identifier(name: str) -> str:
     return name
 
 
-def _quote_sql_literal(value: str) -> str:
+def _escape_sql_single_quotes(value: str) -> str:
     return value.replace("'", "''")
+
+
+def _escape_format_braces(value: str) -> str:
+    return value.replace("{", "{{").replace("}", "}}")
 
 
 def _get_live_backing_table(postgres: PostgresResource, view_name: str) -> str | None:
@@ -97,7 +101,9 @@ def _load_to_postgres(
     """
     table = _validate_sql_identifier(table)
     parquet_path = storage.get_duckdb_path(*parquet_parts)
-    parquet_path_literal = _quote_sql_literal(parquet_path)
+    parquet_path_literal = _escape_sql_single_quotes(
+        _escape_format_braces(parquet_path)
+    )
     tbl_a = f"{table}_a"
     tbl_b = f"{table}_b"
 
