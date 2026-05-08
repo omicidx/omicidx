@@ -28,7 +28,10 @@ _PG_TAGS = {
 
 
 def _validate_sql_identifier(name: str) -> str:
-    """Validate an unquoted PostgreSQL identifier and return it unchanged."""
+    """Validate an unquoted PostgreSQL identifier and return it unchanged.
+
+    Unquoted identifiers are case-insensitive (folded to lowercase) in Postgres.
+    """
     if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name):
         raise ValueError(f"Invalid SQL identifier: {name!r}")
     return name
@@ -134,13 +137,13 @@ def _load_to_postgres(
         target_ddl,
     )
 
-    source_table = f"pg.{table}"
-    if source_table not in insert_sql_template:
+    source_table_pattern = rf"\bpg\.{re.escape(table)}\b"
+    if not re.search(source_table_pattern, insert_sql_template):
         raise ValueError(
-            f"Insert template must contain {source_table} so loads can be redirected "
+            f"Insert template must contain pg.{table} so loads can be redirected "
             "to the inactive A/B backing table."
         )
-    target_insert = insert_sql_template.replace(source_table, f"pg.{target}")
+    target_insert = re.sub(source_table_pattern, f"pg.{target}", insert_sql_template)
     with duckdb_res.get_connection() as con, postgres.attach(con):
         context.log.info(f"Loading {target} from {parquet_path}")
         con.execute(target_insert.format(path=parquet_path_literal))
