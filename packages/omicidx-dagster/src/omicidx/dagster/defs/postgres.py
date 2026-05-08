@@ -142,12 +142,19 @@ def _load_to_postgres(
     ddl: str,
     parquet_parts: tuple[str, ...],
     insert_sql_template: str,
+    indexes: str | None = None,
 ) -> dg.MaterializeResult:
     """Load parquet into Postgres with zero-downtime view swap.
 
     The API reads from a view named `{table}`. Two backing tables alternate:
     `{table}_a` and `{table}_b`. Each reload writes to whichever is NOT
     currently backing the view, swaps the view, then drops the old one.
+
+    Indexes (if supplied) are created AFTER the bulk INSERT and BEFORE the
+    view swap. Bulk-loading into an unindexed table is dramatically faster
+    than maintaining secondary indexes per-row; PRIMARY KEY (an implicit
+    btree) is already part of `ddl` and unavoidable. Index references to
+    `{table}` get rewritten to the target slot.
 
     CREATE OR REPLACE VIEW only takes AccessShareLock — reads never block.
     """
@@ -159,12 +166,9 @@ def _load_to_postgres(
     tbl_a = f"{table}_a"
     tbl_b = f"{table}_b"
 
-    # Determine which slot is currently live by checking the view definition
-    # If no view exists yet (first run), both slots are free — use _a
     live = _get_live_backing_table(postgres, table)
     target = tbl_b if live == tbl_a else tbl_a
 
-    # Create and load the target table
     context.log.info(f"Loading into {target} (live={live or 'none'})")
     target_ddl = ddl.replace(table, target)
     postgres.execute_sql(
@@ -180,11 +184,15 @@ def _load_to_postgres(
         )
     target_insert = re.sub(source_table_pattern, f"pg.{target}", insert_sql_template)
     with duckdb_res.get_connection() as con, postgres.attach(con):
-        context.log.info(f"Loading {target} from {parquet_path}")
+        context.log.info(f"Loading {target} from {parquet_path} (no secondary indexes)")
         con.execute(target_insert.format(path=parquet_path_literal))
         row_count = con.execute(f"SELECT count(*) FROM pg.{target}").fetchone()[0]
 
-    # Swap view to target, drop old backing table
+    if indexes:
+        target_indexes = indexes.replace(table, target)
+        context.log.info(f"Building secondary indexes on {target}")
+        postgres.execute_sql(target_indexes)
+
     context.log.info(f"Swapping view {table} → {target} ({row_count:,} rows)")
     postgres.execute_sql(
         f"CREATE OR REPLACE VIEW {table} AS SELECT * FROM {target}",
@@ -266,6 +274,9 @@ CREATE TABLE IF NOT EXISTS biosample (
     data JSONB NOT NULL,
     _loaded_at TIMESTAMPTZ DEFAULT now()
 );
+"""
+
+_BIOSAMPLE_INDEXES = """
 CREATE INDEX IF NOT EXISTS ix_biosample_organism ON biosample (organism);
 CREATE INDEX IF NOT EXISTS ix_biosample_tax_id ON biosample (tax_id);
 CREATE INDEX IF NOT EXISTS ix_biosample_submission_date ON biosample (submission_date);
@@ -313,6 +324,7 @@ def biosample_postgres(
         postgres=postgres,
         table="biosample",
         ddl=_BIOSAMPLE_DDL,
+        indexes=_BIOSAMPLE_INDEXES,
         parquet_parts=("biosample", "parquet", "biosamples.parquet"),
         insert_sql_template=_BIOSAMPLE_INSERT,
     )
@@ -332,6 +344,9 @@ CREATE TABLE IF NOT EXISTS sra_study (
     data JSONB NOT NULL,
     _loaded_at TIMESTAMPTZ DEFAULT now()
 );
+"""
+
+_SRA_STUDY_INDEXES = """
 CREATE INDEX IF NOT EXISTS ix_sra_study_organism ON sra_study (organism);
 CREATE INDEX IF NOT EXISTS ix_sra_study_study_type ON sra_study (study_type);
 CREATE INDEX IF NOT EXISTS ix_sra_study_bioproject ON sra_study (bioproject);
@@ -375,6 +390,7 @@ def sra_study_postgres(
         postgres=postgres,
         table="sra_study",
         ddl=_SRA_STUDY_DDL,
+        indexes=_SRA_STUDY_INDEXES,
         parquet_parts=("sra", "parquet", "sra_studies.parquet"),
         insert_sql_template=_SRA_STUDY_INSERT,
     )
@@ -394,6 +410,9 @@ CREATE TABLE IF NOT EXISTS sra_sample (
     data JSONB NOT NULL,
     _loaded_at TIMESTAMPTZ DEFAULT now()
 );
+"""
+
+_SRA_SAMPLE_INDEXES = """
 CREATE INDEX IF NOT EXISTS ix_sra_sample_organism ON sra_sample (organism);
 CREATE INDEX IF NOT EXISTS ix_sra_sample_tax_id ON sra_sample (tax_id);
 CREATE INDEX IF NOT EXISTS ix_sra_sample_biosample ON sra_sample (biosample);
@@ -435,6 +454,7 @@ def sra_sample_postgres(
         postgres=postgres,
         table="sra_sample",
         ddl=_SRA_SAMPLE_DDL,
+        indexes=_SRA_SAMPLE_INDEXES,
         parquet_parts=("sra", "parquet", "sra_samples.parquet"),
         insert_sql_template=_SRA_SAMPLE_INSERT,
     )
@@ -456,6 +476,9 @@ CREATE TABLE IF NOT EXISTS sra_experiment (
     data JSONB NOT NULL,
     _loaded_at TIMESTAMPTZ DEFAULT now()
 );
+"""
+
+_SRA_EXPERIMENT_INDEXES = """
 CREATE INDEX IF NOT EXISTS ix_sra_experiment_library_strategy ON sra_experiment (library_strategy);
 CREATE INDEX IF NOT EXISTS ix_sra_experiment_library_source ON sra_experiment (library_source);
 CREATE INDEX IF NOT EXISTS ix_sra_experiment_platform ON sra_experiment (platform);
@@ -508,6 +531,7 @@ def sra_experiment_postgres(
         postgres=postgres,
         table="sra_experiment",
         ddl=_SRA_EXPERIMENT_DDL,
+        indexes=_SRA_EXPERIMENT_INDEXES,
         parquet_parts=("sra", "parquet", "sra_experiments.parquet"),
         insert_sql_template=_SRA_EXPERIMENT_INSERT,
     )
@@ -526,6 +550,9 @@ CREATE TABLE IF NOT EXISTS sra_run (
     data JSONB NOT NULL,
     _loaded_at TIMESTAMPTZ DEFAULT now()
 );
+"""
+
+_SRA_RUN_INDEXES = """
 CREATE INDEX IF NOT EXISTS ix_sra_run_experiment_accession ON sra_run (experiment_accession);
 CREATE INDEX IF NOT EXISTS ix_sra_run_published ON sra_run (published);
 """
@@ -565,6 +592,7 @@ def sra_run_postgres(
         postgres=postgres,
         table="sra_run",
         ddl=_SRA_RUN_DDL,
+        indexes=_SRA_RUN_INDEXES,
         parquet_parts=("sra", "parquet", "sra_runs.parquet"),
         insert_sql_template=_SRA_RUN_INSERT,
     )
@@ -583,6 +611,9 @@ CREATE TABLE IF NOT EXISTS geo_series (
     data JSONB NOT NULL,
     _loaded_at TIMESTAMPTZ DEFAULT now()
 );
+"""
+
+_GEO_SERIES_INDEXES = """
 CREATE INDEX IF NOT EXISTS ix_geo_series_organism ON geo_series (organism);
 CREATE INDEX IF NOT EXISTS ix_geo_series_series_type ON geo_series (series_type);
 CREATE INDEX IF NOT EXISTS ix_geo_series_submission_date ON geo_series (submission_date);
@@ -633,6 +664,7 @@ def geo_series_postgres(
         postgres=postgres,
         table="geo_series",
         ddl=_GEO_SERIES_DDL,
+        indexes=_GEO_SERIES_INDEXES,
         parquet_parts=("geo", "parquet", "geo_series.parquet"),
         insert_sql_template=_GEO_SERIES_INSERT,
     )
@@ -652,6 +684,9 @@ CREATE TABLE IF NOT EXISTS geo_sample (
     data JSONB NOT NULL,
     _loaded_at TIMESTAMPTZ DEFAULT now()
 );
+"""
+
+_GEO_SAMPLE_INDEXES = """
 CREATE INDEX IF NOT EXISTS ix_geo_sample_organism ON geo_sample (organism);
 CREATE INDEX IF NOT EXISTS ix_geo_sample_platform_id ON geo_sample (platform_id);
 CREATE INDEX IF NOT EXISTS ix_geo_sample_series_id ON geo_sample (series_id);
@@ -701,6 +736,7 @@ def geo_sample_postgres(
         postgres=postgres,
         table="geo_sample",
         ddl=_GEO_SAMPLE_DDL,
+        indexes=_GEO_SAMPLE_INDEXES,
         parquet_parts=("geo", "parquet", "geo_samples.parquet"),
         insert_sql_template=_GEO_SAMPLE_INSERT,
     )
@@ -774,6 +810,9 @@ CREATE TABLE IF NOT EXISTS pubmed_article (
     data JSONB NOT NULL,
     _loaded_at TIMESTAMPTZ DEFAULT now()
 );
+"""
+
+_PUBMED_INDEXES = """
 CREATE INDEX IF NOT EXISTS ix_pubmed_article_journal ON pubmed_article (journal);
 CREATE INDEX IF NOT EXISTS ix_pubmed_article_pub_date ON pubmed_article (pub_date);
 """
@@ -827,6 +866,7 @@ def pubmed_postgres(
         postgres=postgres,
         table="pubmed_article",
         ddl=_PUBMED_DDL,
+        indexes=_PUBMED_INDEXES,
         parquet_parts=("pubmed", "parquet", "pubmed_articles.parquet"),
         insert_sql_template=_PUBMED_INSERT,
     )
