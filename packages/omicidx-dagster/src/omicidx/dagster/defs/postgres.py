@@ -74,6 +74,22 @@ def _get_live_backing_table(postgres: PostgresResource, view_name: str) -> str |
                 {"view_name": view_name},
             )
             view_exists = view_exists_result.first() is not None
+            referenced_result = await conn.execute(
+                text("""
+                    SELECT DISTINCT cls.relname
+                    FROM pg_class view_cls
+                    JOIN pg_namespace view_ns ON view_ns.oid = view_cls.relnamespace
+                    JOIN pg_rewrite rw ON rw.ev_class = view_cls.oid
+                    JOIN pg_depend dep ON dep.objid = rw.oid
+                    JOIN pg_class cls ON cls.oid = dep.refobjid
+                    WHERE view_cls.relkind = 'v'
+                      AND view_ns.nspname = 'public'
+                      AND view_cls.relname = :view_name
+                      AND cls.relkind IN ('r', 'p')
+                """),
+                {"view_name": view_name},
+            )
+            referenced_tables = [row[0] for row in referenced_result.fetchall()]
             slot_a = f"{view_name}_a"
             slot_b = f"{view_name}_b"
             result = await conn.execute(
@@ -98,9 +114,11 @@ def _get_live_backing_table(postgres: PostgresResource, view_name: str) -> str |
         await engine.dispose()
         if not rows:
             if view_exists:
+                referenced = ", ".join(referenced_tables) if referenced_tables else "none"
                 raise ValueError(
                     f"View {view_name!r} does not reference expected A/B tables "
-                    f"({slot_a}, {slot_b}). Check for manual schema/view changes."
+                    f"({slot_a}, {slot_b}); found: {referenced}. "
+                    "Check for manual schema/view changes."
                 )
             return None
         if len(rows) > 1:

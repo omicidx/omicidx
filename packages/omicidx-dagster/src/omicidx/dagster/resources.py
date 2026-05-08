@@ -97,7 +97,14 @@ class PostgresResource(dg.ConfigurableResource):
     @staticmethod
     def _split_postgres_statements(sql: str) -> list[str]:
         """Split SQL text into executable PostgreSQL statements."""
-        return [expr.sql(dialect="postgres") for expr in sqlglot.parse(sql, read="postgres")]
+        if not sql.strip():
+            msg = "SQL statement cannot be empty"
+            raise ValueError(msg)
+        parsed = [expr.sql(dialect="postgres") for expr in sqlglot.parse(sql, read="postgres")]
+        if not parsed:
+            msg = "No executable SQL statements were parsed"
+            raise ValueError(msg)
+        return parsed
 
     def execute_sql(self, *statements: str) -> None:
         """Run SQL statements against Postgres via SQLAlchemy async + asyncpg.
