@@ -28,16 +28,19 @@ _PG_TAGS = {
 
 
 def _validate_sql_identifier(name: str) -> str:
+    """Validate an unquoted SQL identifier and return it unchanged."""
     if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name):
         raise ValueError(f"Invalid SQL identifier: {name!r}")
     return name
 
 
 def _escape_sql_single_quotes(value: str) -> str:
+    """Escape single quotes for SQL string literal usage."""
     return value.replace("'", "''")
 
 
 def _escape_format_braces(value: str) -> str:
+    """Escape braces so `str.format()` treats them as literal characters."""
     return value.replace("{", "{{").replace("}", "}}")
 
 
@@ -47,6 +50,8 @@ def _get_live_backing_table(postgres: PostgresResource, view_name: str) -> str |
 
     from sqlalchemy import text
     from sqlalchemy.ext.asyncio import create_async_engine
+
+    view_name = _validate_sql_identifier(view_name)
 
     async def _check():
         engine = create_async_engine(postgres.async_uri)
