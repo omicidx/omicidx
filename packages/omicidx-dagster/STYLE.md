@@ -85,10 +85,19 @@ Use the smallest set that's true. Common combinations:
   consolidate over a 4-partition upstream fires *once* after all
   partitions land, not once per partition.
 - **Use `on_cron(...) & any_deps_updated()` only when** the asset is
-  the most expensive in its layer AND a re-fire (from upstream retry,
-  sensor flap, manual re-materialization) would be costly enough to
-  justify the explicit time-window guarantee. Currently this applies
-  to: `omicidx_duckdb` (multi-GB rebuild + R2 upload).
+  expensive AND a re-fire would be costly. The most common shape that
+  qualifies: a **sensor-driven dynamic-partition upstream** where
+  partitions arrive sequentially throughout the day, combined with a
+  downstream that does **full re-aggregation** over all partitions.
+  `eager()`'s "wait for in-progress" semantics only coalesce when
+  multiple upstream are in flight *simultaneously* — they don't
+  help with sequential arrivals from a sensor. Currently this rule
+  applies to:
+  - `pubmed_parquet` — `pubmed_sensor` fires a RunRequest per new
+    PubMed file as they appear; full reconsolidation per arrival
+    would mean N re-runs per day.
+  - `omicidx_duckdb` — multi-GB DuckDB rebuild + R2 upload from many
+    upstream parquets. Daily-window guarantee is load-bearing.
 - Cron strings are always 5-field crontab (`"0 2 * * *"`), never
   shorthand like `"@daily"`. Shorthand mixes with explicit crons make
   staggering hard to see.
