@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     clickhouse_password: SecretStr | None = None
     clickhouse_database: str = "omicidx"
 
+    # Rate limiting
+    rate_limit: str = "1000/minute"
+
     # Pagination defaults
     default_page_size: int = 25
     max_page_size: int = 500

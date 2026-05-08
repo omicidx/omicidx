@@ -7,7 +7,6 @@ for the non-DB endpoints.
 from unittest.mock import AsyncMock, patch
 
 from fastapi.testclient import TestClient
-
 from omicidx.api.main import app
 
 client = TestClient(app)

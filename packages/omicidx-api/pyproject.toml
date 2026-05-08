@@ -12,6 +12,7 @@ dependencies = [
     "pydantic-settings>=2",
     "orjson>=3.9",
     "loguru>=0.7",
+    "slowapi>=0.1.9",
 ]
 
 [build-system]
