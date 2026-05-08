@@ -12,6 +12,19 @@ from omicidx.dagster.defs.biosample import (  # noqa: E402
     bioproject_raw,
     biosample_raw,
 )
+from omicidx.dagster.defs.consolidate import (  # noqa: E402
+    biosample_parquet,
+    geo_platforms_parquet,
+    geo_rnaseq_counts_parquet,
+    geo_samples_parquet,
+    geo_series_parquet,
+    pubmed_parquet,
+    sra_accessions_parquet,
+    sra_experiments_parquet,
+    sra_runs_parquet,
+    sra_samples_parquet,
+    sra_studies_parquet,
+)
 from omicidx.dagster.defs.geo import (  # noqa: E402
     geo_monthly_partitions,
     geo_raw,
@@ -19,7 +32,7 @@ from omicidx.dagster.defs.geo import (  # noqa: E402
 )
 from omicidx.dagster.defs.postgres import bioproject_postgres  # noqa: E402
 from omicidx.dagster.defs.pubmed import pubmed_raw, pubmed_sensor  # noqa: E402
-from omicidx.dagster.defs.sql import consolidated_parquet, omicidx_duckdb  # noqa: E402
+from omicidx.dagster.defs.sql import omicidx_duckdb  # noqa: E402
 from omicidx.dagster.defs.sra import sra_mirror_listing, sra_raw  # noqa: E402
 from omicidx.dagster.resources import (  # noqa: E402
     DuckDBResource,
@@ -75,8 +88,19 @@ defs = dg.Definitions(
         # SRA
         sra_mirror_listing,
         sra_raw,
-        # SQL
-        consolidated_parquet,
+        # Consolidation (raw → parquet)
+        biosample_parquet,
+        geo_platforms_parquet,
+        geo_samples_parquet,
+        geo_series_parquet,
+        geo_rnaseq_counts_parquet,
+        sra_studies_parquet,
+        sra_samples_parquet,
+        sra_experiments_parquet,
+        sra_runs_parquet,
+        sra_accessions_parquet,
+        pubmed_parquet,
+        # DuckDB build
         omicidx_duckdb,
         # Postgres (API serving)
         bioproject_postgres,
