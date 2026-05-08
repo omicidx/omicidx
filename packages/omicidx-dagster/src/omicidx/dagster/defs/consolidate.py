@@ -486,7 +486,13 @@ def biosample_parquet(
     tags={**_CONSOLIDATE_TAGS, "sla": "daily"},
     deps=[pubmed_raw],
     retry_policy=dg.RetryPolicy(max_retries=1, delay=60),
-    automation_condition=dg.AutomationCondition.eager(),
+    # PubMed raw lands hourly via the file sensor; eager() would cause
+    # full historical reconsolidation each hour. Run once daily, only
+    # if at least one new partition has arrived since last materialization.
+    automation_condition=(
+        dg.AutomationCondition.on_cron("0 3 * * *")
+        & dg.AutomationCondition.any_deps_updated()
+    ),
 )
 def pubmed_parquet(
     context: dg.AssetExecutionContext,
