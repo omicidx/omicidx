@@ -52,7 +52,6 @@ class _SampleFetcher:
         self.local_path = local_path
         self.cursor = "*"
         self.next_url: str | None = None
-        self.any_samples = False
 
     def _filter(self) -> str:
         d = self.partition_date.isoformat()
@@ -87,7 +86,6 @@ class _SampleFetcher:
             if not samples:
                 return
             for sample in samples:
-                self.any_samples = True
                 # Flatten characteristics: {"name": [{"text": "x"}, ...]}
                 # → [{"text": "x", "characteristic": "name"}, ...]
                 flattened = []
@@ -154,7 +152,7 @@ def ebi_biosample_raw(
             )
             return dg.MaterializeResult(
                 metadata={
-                    "dagster/row_count": dg.MetadataValue.int(0),
+                    "row_count": dg.MetadataValue.int(0),
                     "partition_date": dg.MetadataValue.text(partition_date.isoformat()),
                     "note": dg.MetadataValue.text("No samples updated on this date"),
                 }
@@ -171,7 +169,7 @@ def ebi_biosample_raw(
 
         return dg.MaterializeResult(
             metadata={
-                "dagster/row_count": dg.MetadataValue.int(record_count),
+                "row_count": dg.MetadataValue.int(record_count),
                 "partition_date": dg.MetadataValue.text(partition_date.isoformat()),
                 "output_path": dg.MetadataValue.text(str(final_path)),
                 "file_size_mb": dg.MetadataValue.float(
@@ -231,7 +229,7 @@ def ebi_biosample_parquet(
     context.log.info(f"Wrote {row_count:,} rows to {output_path}")
     return dg.MaterializeResult(
         metadata={
-            "dagster/row_count": dg.MetadataValue.int(row_count),
+            "row_count": dg.MetadataValue.int(row_count),
             "output_path": dg.MetadataValue.text(output_path),
             "input_glob": dg.MetadataValue.text(input_glob),
         }
