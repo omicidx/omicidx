@@ -1,6 +1,5 @@
 import pytest
 from fastapi import HTTPException
-
 from omicidx.api.pagination import CursorPage, decode_cursor, encode_cursor
 
 
