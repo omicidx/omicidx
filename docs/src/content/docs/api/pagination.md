@@ -12,10 +12,17 @@ Every paginated request returns a `links.next` URL when more results exist:
 ```json
 {
   "data": [...],
-  "meta": { "count": 50, "total": 12345 },
+  "meta": {
+    "count": 25,
+    "cursor": {
+      "next": "eyJpZCI6MTIzNDV9",
+      "prev": null
+    }
+  },
   "links": {
-    "self": "https://api-omicidx.cancerdatasci.org/biosample?limit=50",
-    "next": "https://api-omicidx.cancerdatasci.org/biosample?limit=50&cursor=eyJpZCI6MTIzNDV9"
+    "self": "https://api-omicidx.cancerdatasci.org/v1/biosample?limit=25",
+    "next": "https://api-omicidx.cancerdatasci.org/v1/biosample?cursor=eyJpZCI6MTIzNDV9&limit=25",
+    "prev": null
   }
 }
 ```
@@ -34,17 +41,17 @@ The `cursor` parameter is a base64url-encoded JSON object containing the sort ke
 
 ## Limits
 
-- `limit` parameter: default `50`, max `1000`.
+- `limit` parameter: default `25`, max `500`.
 - Sort order is fixed per endpoint; passing arbitrary sort fields isn't supported (would invalidate the cursor encoding).
 
 ## Example
 
 ```bash
 # First page
-curl 'https://api-omicidx.cancerdatasci.org/biosample?limit=100'
+curl 'https://api-omicidx.cancerdatasci.org/v1/biosample?limit=100'
 
 # Follow the next link from the response
-curl 'https://api-omicidx.cancerdatasci.org/biosample?limit=100&cursor=...'
+curl 'https://api-omicidx.cancerdatasci.org/v1/biosample?cursor=...&limit=100'
 
 # Stop when no `next` link is returned
 ```

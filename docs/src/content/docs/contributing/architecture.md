@@ -22,8 +22,8 @@ packages/
 ## Package boundaries
 
 - **`omicidx-parsers`** — pure functions, no I/O, no external dependencies beyond stdlib + Pydantic + lxml. Imported by both `omicidx-etl` and `omicidx-dagster`.
-- **`omicidx-etl`** — `oidx` CLI + DuckDB SQL bundles. Pre-Dagster era; many flows are migrating into the Dagster code location, but the SQL bundles in `omicidx/etl/sql/*.sql` are still the source of truth for the consolidated DuckDB views.
-- **`omicidx-dagster`** — orchestration. Per-source raw assets, per-entity consolidation assets, the `omicidx_duckdb` build asset, and per-entity Postgres loaders. Resources: `OmicidxStorage` (R2/S3), `DuckDBResource`, `PostgresResource`.
+- **`omicidx-etl`** — `oidx` CLI + the legacy pre-Dagster ETL flows. The `omicidx/etl/sql/*.sql` bundle here is a duplicate kept for the `oidx sql run` CLI; production reads from the dagster copy below. Dedupe is tracked in [#78](https://github.com/omicidx/omicidx/issues/78).
+- **`omicidx-dagster`** — orchestration and the production source of truth for the consolidated DuckDB views. Per-source raw assets, per-entity consolidation assets, the `omicidx_duckdb` build asset (which reads SQL from `packages/omicidx-dagster/src/omicidx/dagster/sql/*.sql`), and per-entity Postgres loaders. Resources: `OmicidxStorage` (R2/S3), `DuckDBResource`, `PostgresResource`.
 - **`omicidx-api`** — read-only FastAPI service. SQLAlchemy 2.0 + asyncpg, base64url cursor pagination, slowapi rate limiting.
 
 ## Where to make changes
