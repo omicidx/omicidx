@@ -24,6 +24,7 @@ dependencies = [
     "anyio[trio]>=4.0",
     "sqlalchemy[asyncio]>=2.0",
     "asyncpg>=0.30",
+    "python-dateutil>=2.9",
 ]
 
 [dependency-groups]
