@@ -558,6 +558,11 @@ def pubmed_parquet(
                 trim(country) as country, grant_ids
             FROM read_parquet('{input_path}')
             WHERE delete IS NOT TRUE
+            QUALIFY row_number() OVER (
+                PARTITION BY pmid
+                ORDER BY TRY_CAST(date_revised AS DATE) DESC NULLS LAST,
+                         TRY_CAST(date_completed AS DATE) DESC NULLS LAST
+            ) = 1
             ORDER BY pmid
         ) TO '{output}' (FORMAT PARQUET, COMPRESSION ZSTD)
     """
