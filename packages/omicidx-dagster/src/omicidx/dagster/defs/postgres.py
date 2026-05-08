@@ -114,7 +114,7 @@ def _get_live_backing_table(postgres: PostgresResource, view_name: str) -> str |
         await engine.dispose()
         if not rows:
             if view_exists:
-                referenced = ", ".join(referenced_tables) if referenced_tables else "none"
+                referenced = ", ".join(referenced_tables) or "none"
                 raise ValueError(
                     f"View {view_name!r} does not reference expected A/B tables "
                     f"({slot_a}, {slot_b}); found: {referenced}. "

@@ -106,7 +106,10 @@ class PostgresResource(dg.ConfigurableResource):
             if expr is not None
         ]
         if not parsed:
-            msg = "No executable SQL statements were parsed"
+            msg = (
+                "SQL parsing produced no executable statements "
+                "(may contain only comments/whitespace or be malformed)"
+            )
             raise ValueError(msg)
         return parsed
 
