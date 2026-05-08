@@ -167,6 +167,7 @@ def bioproject_raw(
     },
     deps=[bioproject_raw],
     retry_policy=dg.RetryPolicy(max_retries=1, delay=60),
+    automation_condition=dg.AutomationCondition.eager(),
 )
 def bioproject_parquet(
     context: dg.AssetExecutionContext,

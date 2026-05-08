@@ -232,6 +232,7 @@ FROM read_parquet('{path}')
     tags=_PG_TAGS,
     deps=[bioproject_parquet],
     retry_policy=dg.RetryPolicy(max_retries=1, delay=60),
+    automation_condition=dg.AutomationCondition.eager(),
 )
 def bioproject_postgres(
     context: dg.AssetExecutionContext,
@@ -297,6 +298,7 @@ FROM read_parquet('{path}')
     tags=_PG_TAGS,
     deps=[biosample_parquet],
     retry_policy=dg.RetryPolicy(max_retries=1, delay=60),
+    automation_condition=dg.AutomationCondition.eager(),
 )
 def biosample_postgres(
     context: dg.AssetExecutionContext,
@@ -358,6 +360,7 @@ FROM read_parquet('{path}')
     tags=_PG_TAGS,
     deps=[sra_studies_parquet],
     retry_policy=dg.RetryPolicy(max_retries=1, delay=60),
+    automation_condition=dg.AutomationCondition.eager(),
 )
 def sra_study_postgres(
     context: dg.AssetExecutionContext,
@@ -417,6 +420,7 @@ FROM read_parquet('{path}')
     tags=_PG_TAGS,
     deps=[sra_samples_parquet],
     retry_policy=dg.RetryPolicy(max_retries=1, delay=60),
+    automation_condition=dg.AutomationCondition.eager(),
 )
 def sra_sample_postgres(
     context: dg.AssetExecutionContext,
@@ -489,6 +493,7 @@ FROM read_parquet('{path}')
     tags=_PG_TAGS,
     deps=[sra_experiments_parquet],
     retry_policy=dg.RetryPolicy(max_retries=1, delay=60),
+    automation_condition=dg.AutomationCondition.eager(),
 )
 def sra_experiment_postgres(
     context: dg.AssetExecutionContext,
@@ -545,6 +550,7 @@ FROM read_parquet('{path}')
     tags=_PG_TAGS,
     deps=[sra_runs_parquet],
     retry_policy=dg.RetryPolicy(max_retries=1, delay=60),
+    automation_condition=dg.AutomationCondition.eager(),
 )
 def sra_run_postgres(
     context: dg.AssetExecutionContext,
@@ -612,6 +618,7 @@ FROM read_parquet('{path}')
     tags=_PG_TAGS,
     deps=[geo_series_parquet],
     retry_policy=dg.RetryPolicy(max_retries=1, delay=60),
+    automation_condition=dg.AutomationCondition.eager(),
 )
 def geo_series_postgres(
     context: dg.AssetExecutionContext,
@@ -679,6 +686,7 @@ FROM read_parquet('{path}')
     tags=_PG_TAGS,
     deps=[geo_samples_parquet],
     retry_policy=dg.RetryPolicy(max_retries=1, delay=60),
+    automation_condition=dg.AutomationCondition.eager(),
 )
 def geo_sample_postgres(
     context: dg.AssetExecutionContext,
@@ -735,6 +743,7 @@ FROM read_parquet('{path}')
     tags=_PG_TAGS,
     deps=[geo_platforms_parquet],
     retry_policy=dg.RetryPolicy(max_retries=1, delay=60),
+    automation_condition=dg.AutomationCondition.eager(),
 )
 def geo_platform_postgres(
     context: dg.AssetExecutionContext,
@@ -797,6 +806,13 @@ FROM read_parquet('{path}')
     tags=_PG_TAGS,
     deps=[pubmed_parquet],
     retry_policy=dg.RetryPolicy(max_retries=1, delay=60),
+    # PubMed updates hourly upstream; A/B reload of the full table is
+    # too heavy to run more than once a day. Run after pubmed_parquet
+    # finishes, only if it actually rebuilt.
+    automation_condition=(
+        dg.AutomationCondition.on_cron("0 4 * * *")
+        & dg.AutomationCondition.any_deps_updated()
+    ),
 )
 def pubmed_postgres(
     context: dg.AssetExecutionContext,
