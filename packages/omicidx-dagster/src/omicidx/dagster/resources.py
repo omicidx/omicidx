@@ -63,7 +63,11 @@ class DuckDBResource(dg.ConfigurableResource):
         con = duckdb.connect(database)
         con.execute("INSTALL httpfs; LOAD httpfs;")
 
-        # Cloudflare R2 specific ACCOUNT_ID extraction from endpoint
+        con.execute("SET http_retries = 8;")
+        con.execute("SET http_retry_wait_ms = 1000;")
+        con.execute("SET http_retry_backoff = 2.0;")
+        con.execute("SET http_keep_alive = true;")
+
         account_id = self.s3_endpoint.replace("https://", "").split(".")[0]
 
         def _q(value: str) -> str:
