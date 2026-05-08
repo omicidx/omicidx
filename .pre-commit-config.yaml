@@ -5,3 +5,12 @@ repos:
       - id: ruff
         args: [--fix]
       - id: ruff-format
+
+  - repo: local
+    hooks:
+      - id: dagster-definitions-validate
+        name: dagster definitions validate
+        entry: uv run --package omicidx-dagster dagster definitions validate -m omicidx.dagster.definitions
+        language: system
+        pass_filenames: false
+        files: ^packages/omicidx-dagster/src/.*\.py$
