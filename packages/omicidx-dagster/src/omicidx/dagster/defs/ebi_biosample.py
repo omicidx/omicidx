@@ -124,7 +124,7 @@ class _SampleFetcher:
         "storage": "jsonl",
     },
     retry_policy=dg.RetryPolicy(max_retries=2, delay=30),
-    automation_condition=dg.AutomationCondition.on_cron("@daily"),
+    automation_condition=dg.AutomationCondition.on_cron("0 2 * * *"),
 )
 def ebi_biosample_raw(
     context: dg.AssetExecutionContext,

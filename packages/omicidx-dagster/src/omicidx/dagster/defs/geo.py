@@ -6,8 +6,10 @@ re-materialized daily (data accumulates as NCBI indexes new entries).
 
 import asyncio
 import gzip
+import re
 import shutil
 import tempfile
+import time
 from datetime import date, datetime, timedelta
 
 import httpx
@@ -39,8 +41,6 @@ def _month_range_from_partition(partition_key: str) -> tuple[date, date]:
 
 def _entrezid_to_geo(entrezid: str) -> str:
     """Convert an Entrez GDS id to a GEO accession."""
-    import re
-
     if entrezid.startswith("2"):
         return re.sub("^20*", "GSE", entrezid)
     elif entrezid.startswith("1"):
@@ -208,8 +208,6 @@ def geo_rna_seq_counts(
             if len(ids) < retmax:
                 break
             offset += retmax
-            import time
-
             time.sleep(0.5)
 
     df = pl.DataFrame(accessions)
