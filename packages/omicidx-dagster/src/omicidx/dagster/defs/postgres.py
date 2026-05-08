@@ -28,7 +28,7 @@ _PG_TAGS = {
 
 
 def _validate_sql_identifier(name: str) -> str:
-    """Validate an unquoted SQL identifier and return it unchanged."""
+    """Validate an unquoted PostgreSQL identifier and return it unchanged."""
     if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name):
         raise ValueError(f"Invalid SQL identifier: {name!r}")
     return name
@@ -45,7 +45,10 @@ def _escape_format_braces(value: str) -> str:
 
 
 def _get_live_backing_table(postgres: PostgresResource, view_name: str) -> str | None:
-    """Check which backing table a view currently points to, or None if no view."""
+    """Return active `{view}_a|{view}_b` backing table, or None when not detected.
+
+    Raises ValueError when the view unexpectedly points to multiple A/B tables.
+    """
     import asyncio
 
     from sqlalchemy import text
@@ -83,7 +86,8 @@ def _get_live_backing_table(postgres: PostgresResource, view_name: str) -> str |
         if len(rows) > 1:
             table_names = ", ".join(row[0] for row in rows)
             raise ValueError(
-                f"View {view_name!r} references multiple backing tables: {table_names}"
+                f"View {view_name!r} references multiple backing tables: {table_names}. "
+                "Check for manual schema/view modifications or orphaned A/B tables."
             )
         return rows[0][0]
 
