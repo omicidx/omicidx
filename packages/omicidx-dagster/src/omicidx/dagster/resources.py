@@ -6,6 +6,7 @@ from contextlib import contextmanager
 from urllib.parse import urlparse
 
 import duckdb
+import sqlglot
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 from upath import UPath
@@ -94,13 +95,19 @@ class PostgresResource(dg.ConfigurableResource):
         return self.uri.replace("postgresql://", "postgresql+asyncpg://", 1)
 
     def execute_sql(self, *statements: str) -> None:
-        """Run raw SQL statements against Postgres via SQLAlchemy async + asyncpg."""
+        """Run SQL statements against Postgres via SQLAlchemy async + asyncpg.
+
+        Each input string is parsed with sqlglot to split multi-statement
+        SQL into individual statements, since asyncpg cannot execute
+        multiple statements in a single prepared statement call.
+        """
 
         async def _run():
             engine = create_async_engine(self.async_uri)
             async with engine.begin() as conn:
-                for stmt in statements:
-                    await conn.execute(text(stmt))
+                for sql in statements:
+                    for parsed in sqlglot.transpile(sql, read="postgres"):
+                        await conn.execute(text(parsed))
             await engine.dispose()
 
         asyncio.run(_run())
