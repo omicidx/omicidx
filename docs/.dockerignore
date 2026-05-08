@@ -1,0 +1,20 @@
+# Build outputs
+dist/
+.astro/
+
+# Dependencies (rebuilt inside the image)
+node_modules/
+
+# Local-only
+.vscode/
+.DS_Store
+.env
+.env.production
+
+# Logs
+*.log
+
+# Docker assets themselves (avoid recursion)
+Dockerfile
+docker-compose*.yml
+.dockerignore

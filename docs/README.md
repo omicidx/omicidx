@@ -38,4 +38,21 @@ The sidebar TOC is configured in `astro.config.mjs`.
 
 ## Hosting
 
-Tracked in [#75](https://github.com/omicidx/omicidx/issues/75): static container served behind the existing Traefik proxy at `docs.omicidx.cancerdatasci.org`.
+Static container behind the existing Traefik proxy at `docs.omicidx.cancerdatasci.org`.
+
+```bash
+# On the server, from the omicidx repo root:
+cd docs
+docker compose up -d --build
+```
+
+The `Dockerfile` is multi-stage: `node:22-alpine` builds the static site, `caddy:2-alpine` serves it with zstd/gzip compression. The `proxy` Docker network and Cloudflare cert resolver match the existing `omicidx-api` setup — no new infrastructure required.
+
+To redeploy after content changes:
+
+```bash
+git pull
+docker compose up -d --build
+```
+
+CI-driven rebuilds on push to `main` are not yet wired (manual `docker compose up -d --build` is the v1 workflow). See [#75](https://github.com/omicidx/omicidx/issues/75) for follow-ups.
