@@ -1,19 +1,18 @@
-"""SQL consolidation and DuckDB build assets.
+"""DuckDB build asset.
 
-Two-stage pipeline:
-  1. consolidated_parquet: runs 010_raw_to_parquet.sql (raw → parquet on R2)
-  2. omicidx_duckdb: runs 020-050 SQL files (parquet → DuckDB views)
+Builds the omicidx.duckdb file from consolidated parquet views (020-050 SQL).
+The consolidation step is now handled by per-entity assets in consolidate.py.
 """
 
 import json
-import os
 import shutil
 from datetime import datetime
 from pathlib import Path
 
-import dagster as dg
 import sqlglot
 from omicidx.dagster.resources import DuckDBResource, OmicidxStorage
+
+import dagster as dg
 
 SQL_DIR = Path(__file__).parent.parent / "sql"
 
@@ -55,46 +54,6 @@ def _run_sql_file(
     context.log.info(f"Completed {name}")
 
 
-@dg.asset(
-    group_name="sql",
-    kinds={"duckdb", "sql", "parquet"},
-    tags={
-        "layer": "consolidated",
-        "cost": "medium",
-        "sla": "daily",
-        "source": "derived",
-        "storage": "parquet",
-    },
-    deps=[
-        "biosample_raw",
-        "bioproject_parquet",
-        "pubmed_raw",
-        "sra_raw",
-        "geo_gse_raw",
-        "geo_gsm_raw",
-        "geo_gpl_raw",
-    ],
-    retry_policy=dg.RetryPolicy(max_retries=1, delay=60),
-)
-def consolidated_parquet(
-    context: dg.AssetExecutionContext,
-    duckdb_res: DuckDBResource,
-) -> dg.MaterializeResult:
-    """Run raw-to-parquet SQL consolidation (010_*)."""
-    with duckdb_res.get_connection() as con:
-        consolidation_files = [f for f in _list_sql_files() if f < "020"]
-        for name in consolidation_files:
-            _run_sql_file(name, con, context)
-
-    context.log.info("SQL consolidation completed")
-
-    return dg.MaterializeResult(
-        metadata={
-            "sql_files": dg.MetadataValue.text(", ".join(consolidation_files)),
-        }
-    )
-
-
 DB_FILE = "omicidx.duckdb"
 
 
@@ -108,7 +67,20 @@ DB_FILE = "omicidx.duckdb"
         "source": "derived",
         "storage": "duckdb",
     },
-    deps=[consolidated_parquet],
+    deps=[
+        "bioproject_parquet",
+        "biosample_parquet",
+        "sra_studies_parquet",
+        "sra_samples_parquet",
+        "sra_experiments_parquet",
+        "sra_runs_parquet",
+        "sra_accessions_parquet",
+        "geo_series_parquet",
+        "geo_samples_parquet",
+        "geo_platforms_parquet",
+        "geo_rnaseq_counts_parquet",
+        "pubmed_parquet",
+    ],
     retry_policy=dg.RetryPolicy(max_retries=1, delay=60),
 )
 def omicidx_duckdb(
