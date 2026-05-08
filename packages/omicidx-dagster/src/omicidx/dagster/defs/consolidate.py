@@ -83,8 +83,11 @@ def geo_platforms_parquet(
         ) TO '{output}' (FORMAT PARQUET, COMPRESSION ZSTD)
     """
     return _consolidate(
-        context=context, duckdb_res=duckdb_res, storage=storage,
-        sql=sql, output_parts=("geo", "parquet", "geo_platforms.parquet"),
+        context=context,
+        duckdb_res=duckdb_res,
+        storage=storage,
+        sql=sql,
+        output_parts=("geo", "parquet", "geo_platforms.parquet"),
     )
 
 
@@ -119,8 +122,11 @@ def geo_series_parquet(
         ) TO '{output}' (FORMAT PARQUET, COMPRESSION ZSTD)
     """
     return _consolidate(
-        context=context, duckdb_res=duckdb_res, storage=storage,
-        sql=sql, output_parts=("geo", "parquet", "geo_series.parquet"),
+        context=context,
+        duckdb_res=duckdb_res,
+        storage=storage,
+        sql=sql,
+        output_parts=("geo", "parquet", "geo_series.parquet"),
     )
 
 
@@ -158,8 +164,11 @@ def geo_samples_parquet(
         ) TO '{output}' (FORMAT PARQUET, COMPRESSION ZSTD)
     """
     return _consolidate(
-        context=context, duckdb_res=duckdb_res, storage=storage,
-        sql=sql, output_parts=("geo", "parquet", "geo_samples.parquet"),
+        context=context,
+        duckdb_res=duckdb_res,
+        storage=storage,
+        sql=sql,
+        output_parts=("geo", "parquet", "geo_samples.parquet"),
     )
 
 
@@ -175,8 +184,12 @@ def geo_rnaseq_counts_parquet(
     duckdb_res: DuckDBResource,
     storage: OmicidxStorage,
 ) -> dg.MaterializeResult:
-    output = storage.get_duckdb_path("geo", "parquet", "geo_series_with_rnaseq_counts.parquet")
-    input_path = storage.get_duckdb_path("geo", "raw", "gse_with_rna_seq_counts.parquet")
+    output = storage.get_duckdb_path(
+        "geo", "parquet", "geo_series_with_rnaseq_counts.parquet"
+    )
+    input_path = storage.get_duckdb_path(
+        "geo", "raw", "gse_with_rna_seq_counts.parquet"
+    )
     sql = f"""
         COPY (
             SELECT accession.accession as accession
@@ -185,8 +198,11 @@ def geo_rnaseq_counts_parquet(
         ) TO '{output}' (FORMAT PARQUET, COMPRESSION ZSTD)
     """
     return _consolidate(
-        context=context, duckdb_res=duckdb_res, storage=storage,
-        sql=sql, output_parts=("geo", "parquet", "geo_series_with_rnaseq_counts.parquet"),
+        context=context,
+        duckdb_res=duckdb_res,
+        storage=storage,
+        sql=sql,
+        output_parts=("geo", "parquet", "geo_series_with_rnaseq_counts.parquet"),
     )
 
 
@@ -226,8 +242,11 @@ def sra_studies_parquet(
         ) TO '{output}' (FORMAT PARQUET, COMPRESSION ZSTD)
     """
     return _consolidate(
-        context=context, duckdb_res=duckdb_res, storage=storage,
-        sql=sql, output_parts=("sra", "parquet", "sra_studies.parquet"),
+        context=context,
+        duckdb_res=duckdb_res,
+        storage=storage,
+        sql=sql,
+        output_parts=("sra", "parquet", "sra_studies.parquet"),
     )
 
 
@@ -260,8 +279,11 @@ def sra_samples_parquet(
         ) TO '{output}' (FORMAT PARQUET, COMPRESSION ZSTD)
     """
     return _consolidate(
-        context=context, duckdb_res=duckdb_res, storage=storage,
-        sql=sql, output_parts=("sra", "parquet", "sra_samples.parquet"),
+        context=context,
+        duckdb_res=duckdb_res,
+        storage=storage,
+        sql=sql,
+        output_parts=("sra", "parquet", "sra_samples.parquet"),
     )
 
 
@@ -306,8 +328,11 @@ def sra_experiments_parquet(
         ) TO '{output}' (FORMAT PARQUET, COMPRESSION ZSTD)
     """
     return _consolidate(
-        context=context, duckdb_res=duckdb_res, storage=storage,
-        sql=sql, output_parts=("sra", "parquet", "sra_experiments.parquet"),
+        context=context,
+        duckdb_res=duckdb_res,
+        storage=storage,
+        sql=sql,
+        output_parts=("sra", "parquet", "sra_experiments.parquet"),
     )
 
 
@@ -338,8 +363,11 @@ def sra_runs_parquet(
         ) TO '{output}' (FORMAT PARQUET, COMPRESSION ZSTD)
     """
     return _consolidate(
-        context=context, duckdb_res=duckdb_res, storage=storage,
-        sql=sql, output_parts=("sra", "parquet", "sra_runs.parquet"),
+        context=context,
+        duckdb_res=duckdb_res,
+        storage=storage,
+        sql=sql,
+        output_parts=("sra", "parquet", "sra_runs.parquet"),
     )
 
 
@@ -381,8 +409,11 @@ def sra_accessions_parquet(
         ) TO '{output}' (FORMAT PARQUET, COMPRESSION ZSTD)
     """
     return _consolidate(
-        context=context, duckdb_res=duckdb_res, storage=storage,
-        sql=sql, output_parts=("sra", "parquet", "sra_accessions.parquet"),
+        context=context,
+        duckdb_res=duckdb_res,
+        storage=storage,
+        sql=sql,
+        output_parts=("sra", "parquet", "sra_accessions.parquet"),
     )
 
 
@@ -428,8 +459,11 @@ def biosample_parquet(
         ) TO '{output}' (FORMAT PARQUET, COMPRESSION ZSTD)
     """
     return _consolidate(
-        context=context, duckdb_res=duckdb_res, storage=storage,
-        sql=sql, output_parts=("biosample", "parquet", "biosamples.parquet"),
+        context=context,
+        duckdb_res=duckdb_res,
+        storage=storage,
+        sql=sql,
+        output_parts=("biosample", "parquet", "biosamples.parquet"),
     )
 
 
@@ -477,6 +511,9 @@ def pubmed_parquet(
         ) TO '{output}' (FORMAT PARQUET, COMPRESSION ZSTD)
     """
     return _consolidate(
-        context=context, duckdb_res=duckdb_res, storage=storage,
-        sql=sql, output_parts=("pubmed", "parquet", "pubmed_articles.parquet"),
+        context=context,
+        duckdb_res=duckdb_res,
+        storage=storage,
+        sql=sql,
+        output_parts=("pubmed", "parquet", "pubmed_articles.parquet"),
     )

@@ -12,12 +12,13 @@ import re
 import shutil
 import tempfile
 
-import dagster as dg
 import pyarrow as pa
 import pyarrow.parquet as pq
-from omicidx.parsers.sra.parser import sra_object_generator
 from omicidx.dagster.resources import OmicidxStorage
+from omicidx.parsers.sra.parser import sra_object_generator
 from upath import UPath
+
+import dagster as dg
 
 ENTITIES = ["study", "sample", "experiment", "run"]
 
@@ -375,9 +376,7 @@ def sra_raw(
 
     if not current:
         context.log.warning(f"No current-batch files for {entity}")
-        return dg.MaterializeResult(
-            metadata={"row_count": dg.MetadataValue.int(0)}
-        )
+        return dg.MaterializeResult(metadata={"row_count": dg.MetadataValue.int(0)})
 
     out_dir = storage.get_upath("sra", "raw", entity)
 

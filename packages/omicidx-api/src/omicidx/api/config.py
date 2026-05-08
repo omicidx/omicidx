@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     def async_database_url(self) -> str:
         """Convert standard postgresql:// URI to asyncpg driver URI."""
         return self.database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
     db_pool_size: int = 10
     db_max_overflow: int = 20
 

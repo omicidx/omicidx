@@ -45,7 +45,9 @@ def test_build_list_response_with_cursor_param():
 
 
 def test_build_item_response_without_relationships():
-    result = build_item_response(item={"accession": "SAMN1", "organism": "Homo sapiens"})
+    result = build_item_response(
+        item={"accession": "SAMN1", "organism": "Homo sapiens"}
+    )
     assert result["data"]["accession"] == "SAMN1"
     assert "relationships" not in result
 

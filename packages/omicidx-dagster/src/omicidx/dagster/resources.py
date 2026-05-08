@@ -6,6 +6,7 @@ from contextlib import contextmanager
 from urllib.parse import urlparse
 
 import duckdb
+import sqlglot
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 from upath import UPath
@@ -93,14 +94,39 @@ class PostgresResource(dg.ConfigurableResource):
         """Convert standard postgresql:// to asyncpg driver URI."""
         return self.uri.replace("postgresql://", "postgresql+asyncpg://", 1)
 
+    @staticmethod
+    def _split_postgres_statements(sql: str) -> list[str]:
+        """Split SQL text into executable PostgreSQL statements."""
+        if not sql.strip():
+            msg = "SQL statement cannot be empty"
+            raise ValueError(msg)
+        parsed = [
+            expr.sql(dialect="postgres")
+            for expr in sqlglot.parse(sql, read="postgres")
+            if expr is not None
+        ]
+        if not parsed:
+            msg = (
+                "SQL parsing produced no executable statements "
+                "(may contain only comments/whitespace or be malformed)"
+            )
+            raise ValueError(msg)
+        return parsed
+
     def execute_sql(self, *statements: str) -> None:
-        """Run raw SQL statements against Postgres via SQLAlchemy async + asyncpg."""
+        """Run SQL statements against Postgres via SQLAlchemy async + asyncpg.
+
+        Each input string is parsed with sqlglot to split multi-statement
+        SQL into individual statements, since asyncpg cannot execute
+        multiple statements in a single prepared statement call.
+        """
 
         async def _run():
             engine = create_async_engine(self.async_uri)
             async with engine.begin() as conn:
-                for stmt in statements:
-                    await conn.execute(text(stmt))
+                for sql in statements:
+                    for stmt in self._split_postgres_statements(sql):
+                        await conn.execute(text(stmt))
             await engine.dispose()
 
         asyncio.run(_run())

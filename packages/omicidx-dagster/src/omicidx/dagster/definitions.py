@@ -30,7 +30,18 @@ from omicidx.dagster.defs.geo import (  # noqa: E402
     geo_raw,
     geo_rna_seq_counts,
 )
-from omicidx.dagster.defs.postgres import bioproject_postgres  # noqa: E402
+from omicidx.dagster.defs.postgres import (  # noqa: E402
+    bioproject_postgres,
+    biosample_postgres,
+    geo_platform_postgres,
+    geo_sample_postgres,
+    geo_series_postgres,
+    pubmed_postgres,
+    sra_experiment_postgres,
+    sra_run_postgres,
+    sra_sample_postgres,
+    sra_study_postgres,
+)
 from omicidx.dagster.defs.pubmed import pubmed_raw, pubmed_sensor  # noqa: E402
 from omicidx.dagster.defs.sql import omicidx_duckdb  # noqa: E402
 from omicidx.dagster.defs.sra import sra_mirror_listing, sra_raw  # noqa: E402
@@ -104,6 +115,15 @@ defs = dg.Definitions(
         omicidx_duckdb,
         # Postgres (API serving)
         bioproject_postgres,
+        biosample_postgres,
+        sra_study_postgres,
+        sra_sample_postgres,
+        sra_experiment_postgres,
+        sra_run_postgres,
+        geo_series_postgres,
+        geo_sample_postgres,
+        geo_platform_postgres,
+        pubmed_postgres,
     ],
     schedules=[daily_extract_schedule, daily_geo_schedule],
     sensors=[pubmed_sensor],

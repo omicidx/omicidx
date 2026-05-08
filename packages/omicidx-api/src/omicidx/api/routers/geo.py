@@ -34,7 +34,9 @@ async def list_series(
     date_from: date | None = None,
     date_to: date | None = None,
     cursor: str | None = None,
-    limit: Annotated[int, Query(ge=1, le=settings.max_page_size)] = settings.default_page_size,
+    limit: Annotated[
+        int, Query(ge=1, le=settings.max_page_size)
+    ] = settings.default_page_size,
 ):
     stmt = select(GEOSeries).order_by(GEOSeries.accession).limit(limit + 1)
 
@@ -56,8 +58,11 @@ async def list_series(
     next_cursor = encode_cursor(rows[limit - 1].accession) if has_next else None
 
     return build_list_response(
-        items=items, path="/v1/geo/series", limit=limit,
-        next_cursor=next_cursor, cursor_param=cursor,
+        items=items,
+        path="/v1/geo/series",
+        limit=limit,
+        next_cursor=next_cursor,
+        cursor_param=cursor,
     )
 
 
@@ -91,7 +96,9 @@ async def list_samples(
     organism: str | None = None,
     platform_id: str | None = None,
     cursor: str | None = None,
-    limit: Annotated[int, Query(ge=1, le=settings.max_page_size)] = settings.default_page_size,
+    limit: Annotated[
+        int, Query(ge=1, le=settings.max_page_size)
+    ] = settings.default_page_size,
 ):
     stmt = select(GEOSample).order_by(GEOSample.accession).limit(limit + 1)
 
@@ -109,8 +116,11 @@ async def list_samples(
     next_cursor = encode_cursor(rows[limit - 1].accession) if has_next else None
 
     return build_list_response(
-        items=items, path="/v1/geo/samples", limit=limit,
-        next_cursor=next_cursor, cursor_param=cursor,
+        items=items,
+        path="/v1/geo/samples",
+        limit=limit,
+        next_cursor=next_cursor,
+        cursor_param=cursor,
     )
 
 
@@ -130,7 +140,9 @@ async def list_platforms(
     session: Session,
     organism: str | None = None,
     cursor: str | None = None,
-    limit: Annotated[int, Query(ge=1, le=settings.max_page_size)] = settings.default_page_size,
+    limit: Annotated[
+        int, Query(ge=1, le=settings.max_page_size)
+    ] = settings.default_page_size,
 ):
     stmt = select(GEOPlatform).order_by(GEOPlatform.accession).limit(limit + 1)
 
@@ -146,6 +158,9 @@ async def list_platforms(
     next_cursor = encode_cursor(rows[limit - 1].accession) if has_next else None
 
     return build_list_response(
-        items=items, path="/v1/geo/platforms", limit=limit,
-        next_cursor=next_cursor, cursor_param=cursor,
+        items=items,
+        path="/v1/geo/platforms",
+        limit=limit,
+        next_cursor=next_cursor,
+        cursor_param=cursor,
     )

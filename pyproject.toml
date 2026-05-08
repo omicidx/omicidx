@@ -14,6 +14,12 @@ dev-dependencies = [
     "anyio[trio]>=4.0.0",
 ]
 
+[tool.pytest.ini_options]
+addopts = "--import-mode=importlib"
+markers = [
+    "network: marks tests that require network access (deselect with '-m not network')",
+]
+
 [tool.ruff]
 target-version = "py311"
 line-length = 88

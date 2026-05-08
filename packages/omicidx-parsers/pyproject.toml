@@ -42,6 +42,7 @@ build-backend = "hatchling.build"
 packages = ["src/omicidx"]
 
 [tool.pytest.ini_options]
+addopts = "--import-mode=importlib"
 markers = [
     "network: marks tests that require network access (deselect with '-m not network')",
 ]

@@ -10,12 +10,13 @@ import tempfile
 from datetime import datetime
 from urllib.request import urlretrieve
 
-import dagster as dg
+import pubmed_parser as pp
 import pyarrow as pa
 import pyarrow.parquet as pq
-import pubmed_parser as pp
 from omicidx.dagster.resources import OmicidxStorage
 from upath import UPath
+
+import dagster as dg
 
 PUBMED_BASE = UPath("https://ftp.ncbi.nlm.nih.gov/pubmed")
 _XML_GZ_RE = re.compile(r"^(pubmed\d+n\d+)\.xml\.gz$")
@@ -113,9 +114,7 @@ def pubmed_sensor(context: dg.SensorEvaluationContext) -> dg.SensorResult:
     available = _list_pubmed_files()
     available_ids = set(available.keys())
 
-    existing = set(
-        context.instance.get_dynamic_partitions("pubmed_files")
-    )
+    existing = set(context.instance.get_dynamic_partitions("pubmed_files"))
 
     new_ids = sorted(available_ids - existing)
 
@@ -126,9 +125,7 @@ def pubmed_sensor(context: dg.SensorEvaluationContext) -> dg.SensorResult:
     context.log.info(f"Found {len(new_ids)} new PubMed files")
 
     return dg.SensorResult(
-        dynamic_partitions_requests=[
-            pubmed_partitions.build_add_request(new_ids)
-        ],
+        dynamic_partitions_requests=[pubmed_partitions.build_add_request(new_ids)],
         run_requests=[
             dg.RunRequest(
                 partition_key=pid,
