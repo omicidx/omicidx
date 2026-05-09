@@ -216,7 +216,7 @@ def geo_rnaseq_counts_parquet(
     )
     sql = f"""
         COPY (
-            SELECT accession.accession as accession
+            SELECT accession
             FROM read_parquet('{input_path}')
             ORDER BY accession
         ) TO '{output}' (FORMAT PARQUET, COMPRESSION ZSTD)

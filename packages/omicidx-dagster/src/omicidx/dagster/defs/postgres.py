@@ -194,7 +194,24 @@ def _load_to_postgres(
         postgres.execute_sql(target_indexes)
 
     context.log.info(f"Swapping view {table} → {target} ({row_count:,} rows)")
+    # Defensive: if {table} exists as a non-view (legacy direct-load
+    # table from before the A/B-view pattern), CREATE OR REPLACE VIEW
+    # will fail with WrongObjectTypeError. Drop the legacy object so
+    # the migration to the view pattern can proceed.
     postgres.execute_sql(
+        f"""
+        DO $$
+        BEGIN
+            IF EXISTS (
+                SELECT 1 FROM pg_class
+                WHERE relname = '{table}'
+                  AND relnamespace = 'public'::regnamespace
+                  AND relkind <> 'v'
+            ) THEN
+                EXECUTE 'DROP TABLE IF EXISTS public.{table} CASCADE';
+            END IF;
+        END $$;
+        """,
         f"CREATE OR REPLACE VIEW {table} AS SELECT * FROM {target}",
     )
     if live:
