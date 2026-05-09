@@ -193,7 +193,14 @@ def ebi_biosample_raw(
     },
     deps=[ebi_biosample_raw],
     retry_policy=dg.RetryPolicy(max_retries=1, delay=60),
-    automation_condition=dg.AutomationCondition.eager(),
+    # ebi_biosample_raw is daily-partitioned with a long historical tail;
+    # eager() requires every partition to be materialized (any_deps_missing)
+    # before firing, which deadlocks the cascade. Run once daily if any
+    # partition updated in the last 24h. Same fix as GEO consolidates (#95).
+    automation_condition=(
+        dg.AutomationCondition.on_cron("0 6 * * *")
+        & dg.AutomationCondition.any_deps_updated()
+    ),
 )
 def ebi_biosample_parquet(
     context: dg.AssetExecutionContext,
