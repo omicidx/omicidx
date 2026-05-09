@@ -77,7 +77,14 @@ def _consolidate(
     tags={**_CONSOLIDATE_TAGS, "sla": "monthly"},
     deps=[geo_raw],
     retry_policy=dg.RetryPolicy(max_retries=1, delay=60),
-    automation_condition=dg.AutomationCondition.eager(),
+    # GEO raw is monthly-partitioned with a long historical tail; eager()
+    # requires every partition to be materialized (any_deps_missing) before
+    # firing, which deadlocks the cascade. Run once daily if any partition
+    # updated in the last 24h.
+    automation_condition=(
+        dg.AutomationCondition.on_cron("0 6 * * *")
+        & dg.AutomationCondition.any_deps_updated()
+    ),
 )
 def geo_platforms_parquet(
     context: dg.AssetExecutionContext,
@@ -118,7 +125,10 @@ def geo_platforms_parquet(
     tags={**_CONSOLIDATE_TAGS, "sla": "monthly"},
     deps=[geo_raw],
     retry_policy=dg.RetryPolicy(max_retries=1, delay=60),
-    automation_condition=dg.AutomationCondition.eager(),
+    automation_condition=(
+        dg.AutomationCondition.on_cron("0 6 * * *")
+        & dg.AutomationCondition.any_deps_updated()
+    ),
 )
 def geo_series_parquet(
     context: dg.AssetExecutionContext,
@@ -158,7 +168,10 @@ def geo_series_parquet(
     tags={**_CONSOLIDATE_TAGS, "sla": "monthly"},
     deps=[geo_raw],
     retry_policy=dg.RetryPolicy(max_retries=1, delay=60),
-    automation_condition=dg.AutomationCondition.eager(),
+    automation_condition=(
+        dg.AutomationCondition.on_cron("0 6 * * *")
+        & dg.AutomationCondition.any_deps_updated()
+    ),
 )
 def geo_samples_parquet(
     context: dg.AssetExecutionContext,
@@ -201,7 +214,10 @@ def geo_samples_parquet(
     tags={**_CONSOLIDATE_TAGS, "sla": "daily"},
     deps=["geo_rna_seq_counts"],
     retry_policy=dg.RetryPolicy(max_retries=1, delay=60),
-    automation_condition=dg.AutomationCondition.eager(),
+    automation_condition=(
+        dg.AutomationCondition.on_cron("0 6 * * *")
+        & dg.AutomationCondition.any_deps_updated()
+    ),
 )
 def geo_rnaseq_counts_parquet(
     context: dg.AssetExecutionContext,
