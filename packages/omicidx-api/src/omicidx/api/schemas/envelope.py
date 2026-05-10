@@ -1,4 +1,5 @@
 from typing import Any, Generic, TypeVar
+from urllib.parse import urlencode
 
 from pydantic import BaseModel
 
@@ -51,16 +52,28 @@ def build_list_response(
     next_cursor: str | None,
     prev_cursor: str | None = None,
     cursor_param: str | None = None,
+    extra_params: dict[str, str] | None = None,
 ) -> dict[str, Any]:
-    """Build a list envelope dict from query results."""
-    base = path.split("?")[0]
+    """Build a list envelope dict from query results.
 
-    next_link = f"{base}?cursor={next_cursor}&limit={limit}" if next_cursor else None
-    self_link = (
-        f"{base}?cursor={cursor_param}&limit={limit}"
-        if cursor_param
-        else f"{base}?limit={limit}"
+    ``extra_params`` is merged into both ``links.self`` and ``links.next``
+    so non-cursor query params (e.g. ``hydrate``) round-trip across pages.
+    Values that are None are dropped.
+    """
+    base = path.split("?")[0]
+    carry = {k: v for k, v in (extra_params or {}).items() if v is not None}
+
+    def _qs(*pairs: tuple[str, str | int | None]) -> str:
+        params = [(k, str(v)) for k, v in pairs if v is not None]
+        params.extend(carry.items())
+        return urlencode(params)
+
+    next_link = (
+        f"{base}?{_qs(('cursor', next_cursor), ('limit', limit))}"
+        if next_cursor
+        else None
     )
+    self_link = f"{base}?{_qs(('cursor', cursor_param), ('limit', limit))}"
 
     return {
         "data": items,

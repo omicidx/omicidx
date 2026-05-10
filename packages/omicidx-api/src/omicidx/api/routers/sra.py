@@ -322,6 +322,7 @@ async def list_study_samples(
         limit=limit,
         next_cursor=next_cursor,
         cursor_param=cursor,
+        extra_params={"hydrate": hydrate},
     )
 
 
@@ -371,6 +372,7 @@ async def list_study_experiments(
         limit=limit,
         next_cursor=next_cursor,
         cursor_param=cursor,
+        extra_params={"hydrate": hydrate},
     )
 
 
@@ -414,6 +416,7 @@ async def list_study_runs(
         limit=limit,
         next_cursor=next_cursor,
         cursor_param=cursor,
+        extra_params={"hydrate": hydrate},
     )
 
 
@@ -466,6 +469,7 @@ async def list_sample_experiments(
         limit=limit,
         next_cursor=next_cursor,
         cursor_param=cursor,
+        extra_params={"hydrate": hydrate},
     )
 
 
@@ -509,6 +513,7 @@ async def list_sample_runs(
         limit=limit,
         next_cursor=next_cursor,
         cursor_param=cursor,
+        extra_params={"hydrate": hydrate},
     )
 
 
@@ -561,4 +566,5 @@ async def list_experiment_runs(
         limit=limit,
         next_cursor=next_cursor,
         cursor_param=cursor,
+        extra_params={"hydrate": hydrate},
     )

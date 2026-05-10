@@ -54,7 +54,11 @@ def test_study_samples_ids_default():
         ]
         assert body["meta"]["count"] == 3
         assert body["meta"]["cursor"]["next"] is None
-        assert body["links"]["self"] == "/v1/sra/studies/SRP123/samples?limit=10"
+        self_link = body["links"]["self"]
+        assert self_link.startswith("/v1/sra/studies/SRP123/samples?")
+        assert "limit=10" in self_link
+        # hydrate round-trips into the self link so following pages stay in mode
+        assert "hydrate=ids" in self_link
     finally:
         _clear_overrides()
 
@@ -70,6 +74,27 @@ def test_study_samples_pagination_emits_next_cursor():
         next_cursor = body["meta"]["cursor"]["next"]
         assert next_cursor is not None
         assert decode_cursor(next_cursor).after == "SRS2"
+    finally:
+        _clear_overrides()
+
+
+def test_study_samples_summary_preserves_hydrate_in_pagination_links():
+    """hydrate=summary must round-trip into both self and next links."""
+    rows = [
+        SimpleNamespace(accession=f"SRS{i}", data={"accession": f"SRS{i}"})
+        for i in range(3)  # limit+1 → has_next
+    ]
+    _override_session([rows])
+    try:
+        r = client.get("/v1/sra/studies/SRP123/samples?hydrate=summary&limit=2")
+        assert r.status_code == 200
+        body = r.json()
+        assert body["meta"]["cursor"]["next"] is not None
+        # Both self and next must carry hydrate=summary
+        assert "hydrate=summary" in body["links"]["self"]
+        assert "hydrate=summary" in body["links"]["next"]
+        # And the cursor in next is the encoded last-included accession
+        assert "cursor=" in body["links"]["next"]
     finally:
         _clear_overrides()
 
