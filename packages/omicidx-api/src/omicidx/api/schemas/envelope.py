@@ -26,6 +26,12 @@ class Relationship(BaseModel):
     href: str
 
 
+class CollectionRelationship(BaseModel):
+    """A relationship pointing at a paginated sub-resource collection."""
+
+    href: str
+
+
 class ListResponse(BaseModel, Generic[T]):
     data: list[T]
     meta: Meta
@@ -34,7 +40,7 @@ class ListResponse(BaseModel, Generic[T]):
 
 class ItemResponse(BaseModel, Generic[T]):
     data: T
-    relationships: dict[str, Relationship] | None = None
+    relationships: dict[str, Relationship | CollectionRelationship] | None = None
 
 
 def build_list_response(
@@ -76,10 +82,12 @@ def build_list_response(
 def build_item_response(
     *,
     item: dict[str, Any],
-    relationships: dict[str, Relationship] | None = None,
+    relationships: dict[str, Relationship | CollectionRelationship] | None = None,
 ) -> dict[str, Any]:
     """Build a single-item envelope dict."""
     result: dict[str, Any] = {"data": item}
     if relationships:
-        result["relationships"] = {k: v.model_dump() for k, v in relationships.items()}
+        result["relationships"] = {
+            k: v.model_dump(exclude_none=True) for k, v in relationships.items()
+        }
     return result
