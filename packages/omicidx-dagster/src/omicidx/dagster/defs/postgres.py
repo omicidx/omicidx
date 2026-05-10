@@ -194,25 +194,17 @@ def _load_to_postgres(
         postgres.execute_sql(target_indexes)
 
     context.log.info(f"Swapping view {table} → {target} ({row_count:,} rows)")
-    # Defensive: if {table} exists as a non-view (legacy direct-load
-    # table from before the A/B-view pattern), CREATE OR REPLACE VIEW
-    # will fail with WrongObjectTypeError. Drop the legacy object so
-    # the migration to the view pattern can proceed.
+    # Defensive: if {table} previously existed as a non-view (legacy
+    # direct-load table from before the A/B-view pattern), a plain
+    # CREATE VIEW would fail with WrongObjectTypeError. Drop both
+    # forms first so this works for view, legacy table, or absent.
+    # PostgreSQL's DROP TABLE IF EXISTS errors on a view, so DROP VIEW
+    # comes first to clear the view path; the subsequent DROP TABLE
+    # is a no-op if the original was a view.
     postgres.execute_sql(
-        f"""
-        DO $$
-        BEGIN
-            IF EXISTS (
-                SELECT 1 FROM pg_class
-                WHERE relname = '{table}'
-                  AND relnamespace = 'public'::regnamespace
-                  AND relkind <> 'v'
-            ) THEN
-                EXECUTE 'DROP TABLE IF EXISTS public.{table} CASCADE';
-            END IF;
-        END $$;
-        """,
-        f"CREATE OR REPLACE VIEW {table} AS SELECT * FROM {target}",
+        f"DROP VIEW IF EXISTS public.{table}",
+        f"DROP TABLE IF EXISTS public.{table} CASCADE",
+        f"CREATE VIEW {table} AS SELECT * FROM {target}",
     )
     if live:
         postgres.execute_sql(f"DROP TABLE IF EXISTS {live} CASCADE")

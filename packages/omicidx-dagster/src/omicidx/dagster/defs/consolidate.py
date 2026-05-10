@@ -25,7 +25,9 @@ _CONSOLIDATE_TAGS = {
 # the external asset whenever NCBI updates the file's ETag; the eager() rule
 # on sra_accessions_parquet then fires the ingest. Replaces the previous
 # blind-cron pattern. See STYLE.md "Automation".
-_SRA_ACCESSIONS_URL = "https://ftp.ncbi.nlm.nih.gov/sra/reports/Metadata/SRA_Accessions.tab"
+_SRA_ACCESSIONS_URL = (
+    "https://ftp.ncbi.nlm.nih.gov/sra/reports/Metadata/SRA_Accessions.tab"
+)
 
 sra_accessions_external = dg.AssetSpec(
     key="sra_accessions_tab",

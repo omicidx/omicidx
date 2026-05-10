@@ -57,7 +57,9 @@ def _entrezid_to_geo(entrezid: str) -> str:
         lambda e: (
             (
                 isinstance(e, httpx.HTTPStatusError)
-                and (e.response.status_code == 429 or 500 <= e.response.status_code < 600)
+                and (
+                    e.response.status_code == 429 or 500 <= e.response.status_code < 600
+                )
             )
             or isinstance(
                 e,

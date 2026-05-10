@@ -15,14 +15,11 @@ The two main building blocks:
 
 from __future__ import annotations
 
-from typing import Callable
-
 import httpx
 from dateutil import parser as date_parser
+from omicidx.dagster.resources import DuckDBResource, OmicidxStorage
 
 import dagster as dg
-
-from omicidx.dagster.resources import DuckDBResource, OmicidxStorage
 
 
 def etag_change_sensor(
@@ -64,7 +61,9 @@ def etag_change_sensor(
 
         etag = response.headers.get("ETag")
         if not etag:
-            context.log.warning(f"No ETag header for {url}; sensor cannot detect changes")
+            context.log.warning(
+                f"No ETag header for {url}; sensor cannot detect changes"
+            )
             return dg.SensorResult()
 
         etag = etag.strip('"')
@@ -181,7 +180,7 @@ def remote_tsv_to_parquet(
     return external, sensor, _ingest
 
 
-__all__: list[Callable | str] = [
+__all__: list[str] = [
     "etag_change_sensor",
     "remote_tsv_to_parquet",
 ]

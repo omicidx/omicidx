@@ -30,11 +30,15 @@ def _sanitize_utf8(obj):
     PubMed XML occasionally carries Latin-1 / Windows-1252 bytes that
     pubmed_parser surfaces as Python strings with surrogate-escaped bytes.
     Those round-trip into the parquet but fail strict UTF-8 decoding
-    downstream (postgres COPY, JSON serialization). This pass replaces
-    invalid bytes with U+FFFD so the data stays loadable.
+    downstream (postgres COPY, JSON serialization). The encode pass uses
+    `surrogateescape` to recover the original raw bytes, then decodes with
+    `errors='replace'` so invalid UTF-8 sequences become U+FFFD (the
+    canonical Unicode replacement character).
     """
     if isinstance(obj, str):
-        return obj.encode("utf-8", errors="replace").decode("utf-8")
+        return obj.encode("utf-8", errors="surrogateescape").decode(
+            "utf-8", errors="replace"
+        )
     if isinstance(obj, dict):
         return {k: _sanitize_utf8(v) for k, v in obj.items()}
     if isinstance(obj, list):
