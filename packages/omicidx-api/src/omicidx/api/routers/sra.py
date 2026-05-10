@@ -301,9 +301,7 @@ async def list_study_samples(
         rows = result.scalars().all()
         has_next = len(rows) > limit
         items = [r.data for r in rows[:limit]]
-        next_cursor = (
-            encode_cursor(rows[limit - 1].accession) if has_next else None
-        )
+        next_cursor = encode_cursor(rows[limit - 1].accession) if has_next else None
     else:
         stmt = (
             select(sample_subq.c.accession)
@@ -351,9 +349,7 @@ async def list_study_experiments(
         rows = result.scalars().all()
         has_next = len(rows) > limit
         items = [r.data for r in rows[:limit]]
-        next_cursor = (
-            encode_cursor(rows[limit - 1].accession) if has_next else None
-        )
+        next_cursor = encode_cursor(rows[limit - 1].accession) if has_next else None
     else:
         stmt = (
             select(SraExperiment.accession)
@@ -405,9 +401,7 @@ async def list_study_runs(
         rows = result.scalars().all()
         has_next = len(rows) > limit
         items = [r.data for r in rows[:limit]]
-        next_cursor = (
-            encode_cursor(rows[limit - 1].accession) if has_next else None
-        )
+        next_cursor = encode_cursor(rows[limit - 1].accession) if has_next else None
     else:
         accs = result.scalars().all()
         has_next = len(accs) > limit
@@ -450,9 +444,7 @@ async def list_sample_experiments(
         rows = result.scalars().all()
         has_next = len(rows) > limit
         items = [r.data for r in rows[:limit]]
-        next_cursor = (
-            encode_cursor(rows[limit - 1].accession) if has_next else None
-        )
+        next_cursor = encode_cursor(rows[limit - 1].accession) if has_next else None
     else:
         stmt = (
             select(SraExperiment.accession)
@@ -504,9 +496,7 @@ async def list_sample_runs(
         rows = result.scalars().all()
         has_next = len(rows) > limit
         items = [r.data for r in rows[:limit]]
-        next_cursor = (
-            encode_cursor(rows[limit - 1].accession) if has_next else None
-        )
+        next_cursor = encode_cursor(rows[limit - 1].accession) if has_next else None
     else:
         accs = result.scalars().all()
         has_next = len(accs) > limit
@@ -549,9 +539,7 @@ async def list_experiment_runs(
         rows = result.scalars().all()
         has_next = len(rows) > limit
         items = [r.data for r in rows[:limit]]
-        next_cursor = (
-            encode_cursor(rows[limit - 1].accession) if has_next else None
-        )
+        next_cursor = encode_cursor(rows[limit - 1].accession) if has_next else None
     else:
         stmt = (
             select(SraRun.accession)
