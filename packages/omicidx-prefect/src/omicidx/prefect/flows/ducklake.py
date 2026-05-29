@@ -179,12 +179,18 @@ def bioproject_to_ducklake(lake_schema: str = LAKE_SCHEMA) -> dict:
 
 
 @task(retries=1, retry_delay_seconds=60)
-def ducklake_maintenance(expire_older_than: str = "now() - INTERVAL 30 DAY") -> dict:
-    """Expire old snapshots and delete the data files they pinned.
+def ducklake_maintenance(
+    expire_older_than: str = "now() - INTERVAL 30 DAY",
+    compact: bool = True,
+) -> dict:
+    """Expire old snapshots, delete their data files, and compact.
 
     DROP/rewrite in DuckLake only unlinks in the catalog; reclaiming R2
-    space needs expire_snapshots + cleanup_old_files. Default retention
-    is 30 days of snapshots.
+    space needs expire_snapshots + cleanup_old_files. Compaction
+    (merge_adjacent_files) coalesces the many small parquet files that
+    incremental MERGEs accumulate. Default retention is 30 days of
+    snapshots (appropriate for incremental tables; full-snapshot tables
+    keep little useful history, so a tighter window can be passed).
     """
     log = get_run_logger()
     with get_ducklake_connection() as con:
@@ -192,6 +198,15 @@ def ducklake_maintenance(expire_older_than: str = "now() - INTERVAL 30 DAY") -> 
         deleted = con.execute(
             "CALL ducklake_cleanup_old_files('lake', cleanup_all => true)"
         ).fetchall()
+        if compact:
+            con.execute("CALL ducklake_merge_adjacent_files('lake')")
         remaining = con.execute("SELECT count(*) FROM lake.snapshots()").fetchone()[0]
-    log.info(f"Cleaned {len(deleted)} orphaned files; {remaining} snapshots remain")
-    return {"files_deleted": len(deleted), "snapshots_remaining": remaining}
+    log.info(
+        f"Cleaned {len(deleted)} orphaned files; compact={compact}; "
+        f"{remaining} snapshots remain"
+    )
+    return {
+        "files_deleted": len(deleted),
+        "compacted": compact,
+        "snapshots_remaining": remaining,
+    }

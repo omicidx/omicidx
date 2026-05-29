@@ -10,7 +10,11 @@ Targets `LAKE_SCHEMA` (`omicidx_dev` during the transition; promote to
 `omicidx` at cutover).
 """
 
-from omicidx.prefect.flows.ducklake import LAKE_SCHEMA, bioproject_to_ducklake
+from omicidx.prefect.flows.ducklake import (
+    LAKE_SCHEMA,
+    bioproject_to_ducklake,
+    ducklake_maintenance,
+)
 from omicidx.prefect.flows.ducklake_biosample import biosample_to_ducklake
 from omicidx.prefect.flows.ducklake_geo import (
     geo_platform_to_ducklake,
@@ -46,6 +50,20 @@ def ducklake_load_flow(lake_schema: str = LAKE_SCHEMA) -> None:
     sra_experiment_to_ducklake(lake_schema=lake_schema)
     sra_run_to_ducklake(lake_schema=lake_schema)
     pubmed_to_ducklake(lake_schema=lake_schema)
+
+
+@flow(name="ducklake-maintenance")
+def ducklake_maintenance_flow(
+    expire_older_than: str = "now() - INTERVAL 30 DAY",
+    compact: bool = True,
+) -> None:
+    """Scheduled (weekly) catalog maintenance: retention + compaction.
+
+    Runs independently of ducklake-load. Reclaims R2 space pinned by
+    expired snapshots and coalesces the small parquet files that daily
+    incremental MERGEs accumulate.
+    """
+    ducklake_maintenance(expire_older_than=expire_older_than, compact=compact)
 
 
 if __name__ == "__main__":
