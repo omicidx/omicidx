@@ -93,7 +93,9 @@ def merge_to_ducklake(
         f"CREATE TABLE IF NOT EXISTS lake.{schema}.{table} AS "
         "SELECT * FROM _merge_src WHERE false"
     )
-    set_clause = ", ".join(f"{c} = src.{c}" for c in update_cols)
+    # Quote identifiers so reserved-word columns (e.g. pubmed's
+    # "references") are valid in the UPDATE SET list.
+    set_clause = ", ".join(f'"{c}" = src."{c}"' for c in update_cols)
     message = commit_message or f"ducklake-load: merge {schema}.{table}"
     con.execute("BEGIN TRANSACTION")
     try:
