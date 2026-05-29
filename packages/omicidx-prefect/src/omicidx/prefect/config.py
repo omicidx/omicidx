@@ -34,6 +34,8 @@ class Settings(BaseSettings):
     s3_region: str = "auto"
     s3_url_style: str = "path"
     postgres_uri: str | None = None
+    ducklake_uri: str | None = None
+    ducklake_data_path: str | None = None
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -102,6 +104,70 @@ def get_duckdb_connection(database: str = ":memory:") -> duckdb.DuckDBPyConnecti
         ACCOUNT_ID '{_q(account_id)}'
     );"""
     con.execute(sql)
+    return con
+
+
+def _parse_libpq(uri: str) -> dict[str, str]:
+    """Parse a `postgres:key=val key=val ...` connection string.
+
+    Mirrors the libpq-style string stored in DUCKLAKE_URI. Returns a dict
+    keyed by the libpq keyword (host, port, dbname, user, password).
+    """
+    body = uri.split(":", 1)[1] if uri.startswith("postgres:") else uri
+    params: dict[str, str] = {}
+    for token in body.split():
+        if "=" not in token:
+            raise ValueError(f"Malformed DUCKLAKE_URI token: {token!r}")
+        key, value = token.split("=", 1)
+        params[key.strip().lower()] = value.strip()
+    for required in ("host", "dbname", "user"):
+        if required not in params:
+            raise ValueError(f"DUCKLAKE_URI missing required key: {required!r}")
+    return params
+
+
+def get_ducklake_connection() -> duckdb.DuckDBPyConnection:
+    """Attach the DuckLake catalog as `lake` and return the connection.
+
+    Builds the three secrets the catalog needs as TEMPORARY (session)
+    secrets so the flow is self-contained in any fresh worker:
+
+    - `r2`      — R2 data access (created by get_duckdb_connection)
+    - `pg_main` — postgres catalog metadata store (db `lake`)
+    - `lake`    — the ducklake secret tying metadata + data_path together
+
+    The catalog's own stored data_path governs existing tables; the
+    DATA_PATH below only matters for first-time catalog init. The
+    `cdsci-lake` bucket is ducklake-controlled exclusively — raw inputs
+    are read from PUBLISH_ROOT (a different bucket), never written here.
+    """
+    s = settings()
+    if not s.ducklake_uri:
+        raise RuntimeError("DUCKLAKE_URI is not set")
+    if not s.ducklake_data_path:
+        raise RuntimeError("DUCKLAKE_DATA_PATH is not set")
+    pg = _parse_libpq(s.ducklake_uri)
+
+    con = get_duckdb_connection()  # httpfs + r2 secret already loaded
+    con.execute("INSTALL ducklake; LOAD ducklake;")
+    con.execute("INSTALL postgres; LOAD postgres;")
+    con.execute(f"""
+        CREATE OR REPLACE SECRET pg_main (
+            TYPE postgres,
+            HOST '{_q(pg["host"])}',
+            PORT {int(pg.get("port", "5432"))},
+            DATABASE '{_q(pg["dbname"])}',
+            USER '{_q(pg["user"])}',
+            PASSWORD '{_q(pg.get("password", ""))}'
+        );""")
+    con.execute(f"""
+        CREATE OR REPLACE SECRET lake (
+            TYPE ducklake,
+            METADATA_PATH '',
+            DATA_PATH '{_q(s.ducklake_data_path)}',
+            METADATA_PARAMETERS MAP {{'TYPE': 'postgres', 'SECRET': 'pg_main'}}
+        );""")
+    con.execute("ATTACH 'ducklake:lake'")
     return con
 
 

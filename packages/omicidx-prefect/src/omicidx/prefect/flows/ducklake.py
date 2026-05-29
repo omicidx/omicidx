@@ -1,0 +1,183 @@
+"""DuckLake load flow: MERGE raw → lake.<schema>.* (incremental).
+
+Each entity is merged into the DuckLake catalog by its natural key. The
+MERGE source is a deduped, typed projection of the raw data; a per-row
+content hash (`_row_hash`) gates UPDATEs so unchanged rows never rewrite
+a data file — DuckLake is copy-on-write, so an idempotent re-run writes
+no new files and only a trivial snapshot.
+
+This sits between `raw-extract` and `postgres-load`. During the
+transition it writes to a development schema (`omicidx_dev`) so the
+production `omicidx` schema stays clean until each entity is validated;
+flip `LAKE_SCHEMA` to `omicidx` at cutover.
+
+`cdsci-lake` (the catalog's data bucket) is ducklake-controlled
+exclusively. Raw inputs are read from PUBLISH_ROOT (a different bucket)
+via `get_duckdb_path`; nothing else is written into the lake bucket.
+"""
+
+import duckdb
+import orjson
+from omicidx.prefect.config import get_duckdb_path, get_ducklake_connection
+
+from prefect import flow, get_run_logger, task
+from prefect.runtime import flow_run
+
+# Development target. Promote to "omicidx" at cutover (P3).
+LAKE_SCHEMA = "omicidx_dev"
+
+
+def _commit_extra(**fields: object) -> str:
+    """JSON blob for a snapshot's commit_extra_info, tagged with run id."""
+    return orjson.dumps({"prefect_run_id": flow_run.get_id(), **fields}).decode()
+
+
+def merge_to_ducklake(
+    con: duckdb.DuckDBPyConnection,
+    *,
+    schema: str,
+    table: str,
+    source_sql: str,
+    key: str,
+    update_cols: list[str],
+    hash_col: str = "_row_hash",
+    author: str = "prefect:ducklake-load",
+    commit_message: str | None = None,
+    commit_extra_info: str | None = None,
+) -> int:
+    """MERGE a deduped source projection into lake.<schema>.<table>.
+
+    The target table is created (empty) from the source projection on
+    first run so its schema is locked to exactly what the MERGE writes.
+    Subsequent runs hash-gate UPDATEs and INSERT unmatched rows.
+
+    The caller's `source_sql` MUST yield at most one row per `key`
+    (MERGE rejects multiple source matches) and include `key`,
+    `hash_col`, and every column in `update_cols`.
+
+    The MERGE commit is stamped with author/message/extra_info so
+    `SELECT * FROM lake.snapshots()` is self-documenting. The stamp must
+    share a transaction with the DML — DuckLake clears it on commit, so
+    auto-committed statements would lose it.
+    """
+    con.execute(f"CREATE SCHEMA IF NOT EXISTS lake.{schema}")
+    con.execute(f"CREATE OR REPLACE TEMP VIEW _merge_src AS {source_sql}")
+    con.execute(
+        f"CREATE TABLE IF NOT EXISTS lake.{schema}.{table} AS "
+        "SELECT * FROM _merge_src WHERE false"
+    )
+    set_clause = ", ".join(f"{c} = src.{c}" for c in update_cols)
+    message = commit_message or f"ducklake-load: merge {schema}.{table}"
+    con.execute("BEGIN TRANSACTION")
+    try:
+        con.execute(
+            "CALL ducklake_set_commit_message('lake', ?, ?, extra_info := ?)",
+            [author, message, commit_extra_info],
+        )
+        con.execute(f"""
+            MERGE INTO lake.{schema}.{table} tgt
+            USING _merge_src src ON tgt.{key} = src.{key}
+            WHEN MATCHED AND tgt.{hash_col} <> src.{hash_col}
+                THEN UPDATE SET {set_clause}
+            WHEN NOT MATCHED THEN INSERT *
+        """)
+        con.execute("COMMIT")
+    except Exception:
+        con.execute("ROLLBACK")
+        raise
+    return con.execute(
+        f"SELECT count(*) FROM lake.{schema}.{table}"
+    ).fetchone()[0]
+
+
+# -- bioproject (POC) ----------------------------------------------------------
+
+# Full-dump source: one record per accession already, but we dedup
+# defensively and hash the payload to gate no-op rewrites.
+_BIOPROJECT_SOURCE = """
+SELECT * EXCLUDE (rn) FROM (
+    SELECT
+        trim(accession) AS accession,
+        trim(title) AS title,
+        trim(description) AS description,
+        trim(name) AS name,
+        publications,
+        locus_tags,
+        release_date,
+        data_types,
+        external_links,
+        md5(to_json({{
+            title: trim(title), description: trim(description),
+            name: trim(name), publications: publications,
+            locus_tags: locus_tags, release_date: release_date,
+            data_types: data_types, external_links: external_links
+        }})) AS _row_hash,
+        row_number() OVER (
+            PARTITION BY trim(accession) ORDER BY release_date DESC NULLS LAST
+        ) AS rn
+    FROM read_ndjson_auto('{path}', maximum_object_size = 1000000000)
+    WHERE accession IS NOT NULL AND trim(accession) <> ''
+) WHERE rn = 1
+"""
+
+_BIOPROJECT_UPDATE_COLS = [
+    "title", "description", "name", "publications", "locus_tags",
+    "release_date", "data_types", "external_links", "_row_hash",
+]
+
+
+@task(retries=1, retry_delay_seconds=60)
+def bioproject_to_ducklake(lake_schema: str = LAKE_SCHEMA) -> dict:
+    """MERGE raw bioproject JSONL → lake.<lake_schema>.bioproject."""
+    log = get_run_logger()
+    raw = get_duckdb_path("bioproject", "raw", "data.jsonl.gz")
+    source_sql = _BIOPROJECT_SOURCE.format(path=raw)
+    with get_ducklake_connection() as con:
+        log.info(f"Merging {raw} → lake.{lake_schema}.bioproject")
+        rows = merge_to_ducklake(
+            con,
+            schema=lake_schema,
+            table="bioproject",
+            source_sql=source_sql,
+            key="accession",
+            update_cols=_BIOPROJECT_UPDATE_COLS,
+            commit_message=f"ducklake-load: bioproject → {lake_schema}",
+            commit_extra_info=_commit_extra(entity="bioproject", source=raw),
+        )
+    log.info(f"lake.{lake_schema}.bioproject now holds {rows:,} rows")
+    return {"table": f"{lake_schema}.bioproject", "row_count": rows}
+
+
+# -- maintenance ---------------------------------------------------------------
+
+
+@task(retries=1, retry_delay_seconds=60)
+def ducklake_maintenance(expire_older_than: str = "now() - INTERVAL 30 DAY") -> dict:
+    """Expire old snapshots and delete the data files they pinned.
+
+    DROP/rewrite in DuckLake only unlinks in the catalog; reclaiming R2
+    space needs expire_snapshots + cleanup_old_files. Default retention
+    is 30 days of snapshots.
+    """
+    log = get_run_logger()
+    with get_ducklake_connection() as con:
+        con.execute(f"CALL ducklake_expire_snapshots('lake', older_than => {expire_older_than})")
+        deleted = con.execute(
+            "CALL ducklake_cleanup_old_files('lake', cleanup_all => true)"
+        ).fetchall()
+        remaining = con.execute("SELECT count(*) FROM lake.snapshots()").fetchone()[0]
+    log.info(f"Cleaned {len(deleted)} orphaned files; {remaining} snapshots remain")
+    return {"files_deleted": len(deleted), "snapshots_remaining": remaining}
+
+
+# -- flow ----------------------------------------------------------------------
+
+
+@flow(name="ducklake-load")
+def ducklake_load_flow(lake_schema: str = LAKE_SCHEMA) -> None:
+    """POC: merge bioproject into the lake. Fan-out lands here in P2."""
+    bioproject_to_ducklake(lake_schema=lake_schema)
+
+
+if __name__ == "__main__":
+    ducklake_load_flow()
