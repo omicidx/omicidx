@@ -1,9 +1,13 @@
 """Postgres-load flow.
 
-One task per entity. Each task loads the consolidated parquet into a
-Postgres backing table (A/B-slot pattern) and atomically swaps a view
-to point at the new one. The API reads through the view, so reads
-never block during reload.
+One task per entity. Each task loads a DuckLake table
+(lake.<LAKE_SCHEMA>.<entity>) into a Postgres backing table (A/B-slot
+pattern) and atomically swaps a view to point at the new one. The API
+reads through the view, so reads never block during reload.
+
+Sources track the ducklake-load schema (LAKE_SCHEMA = omicidx_dev during
+the transition; flips to omicidx at cutover). `consolidate` remains as a
+fallback until this path is validated end-to-end.
 """
 
 import asyncio
@@ -12,10 +16,10 @@ import re
 from omicidx.prefect.config import (
     attach_postgres,
     execute_postgres_sql,
-    get_duckdb_connection,
-    get_duckdb_path,
+    get_ducklake_connection,
     postgres_async_uri,
 )
+from omicidx.prefect.flows.ducklake import LAKE_SCHEMA
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
@@ -26,14 +30,6 @@ def _validate_sql_identifier(name: str) -> str:
     if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name):
         raise ValueError(f"Invalid SQL identifier: {name!r}")
     return name
-
-
-def _escape_sql_single_quotes(value: str) -> str:
-    return value.replace("'", "''")
-
-
-def _escape_format_braces(value: str) -> str:
-    return value.replace("{", "{{").replace("}", "}}")
 
 
 def _get_live_backing_table(view_name: str) -> str | None:
@@ -115,16 +111,22 @@ def _load(
     *,
     table: str,
     ddl: str,
-    parquet_parts: tuple[str, ...],
+    lake_table: str,
     insert_sql_template: str,
     indexes: str | None = None,
+    lake_schema: str = LAKE_SCHEMA,
 ) -> int:
-    """Load parquet into Postgres with zero-downtime view swap."""
+    """Load a DuckLake table into Postgres with zero-downtime view swap.
+
+    Reads `lake.<lake_schema>.<lake_table>` (DuckLake attached on the same
+    connection that attaches the serving Postgres as `pg`) and inserts
+    into the inactive A/B backing table, then swaps the public view.
+    """
     log = get_run_logger()
     table = _validate_sql_identifier(table)
-    parquet_path = get_duckdb_path(*parquet_parts)
-    parquet_path_literal = _escape_sql_single_quotes(
-        _escape_format_braces(parquet_path)
+    lake_ref = (
+        f"lake.{_validate_sql_identifier(lake_schema)}"
+        f".{_validate_sql_identifier(lake_table)}"
     )
     tbl_a = f"{table}_a"
     tbl_b = f"{table}_b"
@@ -142,10 +144,15 @@ def _load(
             f"Insert template must contain pg.{table} so loads can be redirected "
             "to the inactive A/B backing table."
         )
+    if "{lake_ref}" not in insert_sql_template:
+        raise ValueError(
+            "Insert template must contain {lake_ref} so the source can be bound "
+            "to the DuckLake table."
+        )
     target_insert = re.sub(source_table_pattern, f"pg.{target}", insert_sql_template)
-    with get_duckdb_connection() as con, attach_postgres(con):
-        log.info(f"Loading {target} from {parquet_path} (no secondary indexes)")
-        con.execute(target_insert.format(path=parquet_path_literal))
+    with get_ducklake_connection() as con, attach_postgres(con):
+        log.info(f"Loading {target} from {lake_ref} (no secondary indexes)")
+        con.execute(target_insert.format(lake_ref=lake_ref))
         row_count = con.execute(f"SELECT count(*) FROM pg.{target}").fetchone()[0]
 
     if indexes:
@@ -187,7 +194,7 @@ SELECT accession, name, title, release_date, to_json({{
     data_types: data_types, publications: publications,
     external_links: external_links, locus_tags: locus_tags
 }})::TEXT AS data
-FROM read_parquet('{path}')
+FROM {lake_ref}
 """
 
 _BIOSAMPLE_DDL = """
@@ -227,7 +234,7 @@ SELECT
         attribute_recs: attribute_recs, attributes: attributes,
         id_recs: id_recs, ids: ids
     }})::TEXT AS data
-FROM read_parquet('{path}')
+FROM {lake_ref}
 """
 
 _SRA_STUDY_DDL = """
@@ -263,7 +270,7 @@ SELECT
         attributes: attributes, xrefs: xrefs,
         pubmed_ids: pubmed_ids
     }})::TEXT AS data
-FROM read_parquet('{path}')
+FROM {lake_ref}
 """
 
 _SRA_SAMPLE_DDL = """
@@ -297,7 +304,7 @@ SELECT
         identifiers: identifiers, attributes: attributes,
         xrefs: xrefs
     }})::TEXT AS data
-FROM read_parquet('{path}')
+FROM {lake_ref}
 """
 
 _SRA_EXPERIMENT_DDL = """
@@ -344,7 +351,7 @@ SELECT
         identifiers: identifiers, attributes: attributes,
         xrefs: xrefs, reads: reads
     }})::TEXT AS data
-FROM read_parquet('{path}')
+FROM {lake_ref}
 """
 
 _SRA_RUN_DDL = """
@@ -375,7 +382,7 @@ SELECT
         title: title, identifiers: identifiers,
         attributes: attributes, qualities: qualities
     }})::TEXT AS data
-FROM read_parquet('{path}')
+FROM {lake_ref}
 """
 
 _GEO_SERIES_DDL = """
@@ -417,7 +424,7 @@ SELECT
         subseries: subseries, bioprojects: bioprojects,
         sra_studies: sra_studies, contributor: contributor
     }})::TEXT AS data
-FROM read_parquet('{path}')
+FROM {lake_ref}
 """
 
 _GEO_SAMPLE_DDL = """
@@ -459,7 +466,7 @@ SELECT
         supplemental_files: supplemental_files,
         contributor: contributor
     }})::TEXT AS data
-FROM read_parquet('{path}')
+FROM {lake_ref}
 """
 
 _GEO_PLATFORM_DDL = """
@@ -487,7 +494,7 @@ SELECT
         contact: contact, contributor: contributor,
         relation: relation
     }})::TEXT AS data
-FROM read_parquet('{path}')
+FROM {lake_ref}
 """
 
 _PUBMED_DDL = """
@@ -524,7 +531,7 @@ SELECT
         grant_ids: grant_ids,
         country: country, medline_ta: medline_ta
     }})::TEXT AS data
-FROM read_parquet('{path}')
+FROM {lake_ref}
 """
 
 
@@ -536,7 +543,7 @@ def bioproject_postgres() -> int:
     return _load(
         table="bioproject",
         ddl=_BIOPROJECT_DDL,
-        parquet_parts=("bioproject", "parquet", "bioprojects.parquet"),
+        lake_table="bioproject",
         insert_sql_template=_BIOPROJECT_INSERT,
     )
 
@@ -547,7 +554,7 @@ def biosample_postgres() -> int:
         table="biosample",
         ddl=_BIOSAMPLE_DDL,
         indexes=_BIOSAMPLE_INDEXES,
-        parquet_parts=("biosample", "parquet", "biosamples.parquet"),
+        lake_table="biosample",
         insert_sql_template=_BIOSAMPLE_INSERT,
     )
 
@@ -558,7 +565,7 @@ def sra_study_postgres() -> int:
         table="sra_study",
         ddl=_SRA_STUDY_DDL,
         indexes=_SRA_STUDY_INDEXES,
-        parquet_parts=("sra", "parquet", "sra_studies.parquet"),
+        lake_table="sra_study",
         insert_sql_template=_SRA_STUDY_INSERT,
     )
 
@@ -569,7 +576,7 @@ def sra_sample_postgres() -> int:
         table="sra_sample",
         ddl=_SRA_SAMPLE_DDL,
         indexes=_SRA_SAMPLE_INDEXES,
-        parquet_parts=("sra", "parquet", "sra_samples.parquet"),
+        lake_table="sra_sample",
         insert_sql_template=_SRA_SAMPLE_INSERT,
     )
 
@@ -580,7 +587,7 @@ def sra_experiment_postgres() -> int:
         table="sra_experiment",
         ddl=_SRA_EXPERIMENT_DDL,
         indexes=_SRA_EXPERIMENT_INDEXES,
-        parquet_parts=("sra", "parquet", "sra_experiments.parquet"),
+        lake_table="sra_experiment",
         insert_sql_template=_SRA_EXPERIMENT_INSERT,
     )
 
@@ -591,7 +598,7 @@ def sra_run_postgres() -> int:
         table="sra_run",
         ddl=_SRA_RUN_DDL,
         indexes=_SRA_RUN_INDEXES,
-        parquet_parts=("sra", "parquet", "sra_runs.parquet"),
+        lake_table="sra_run",
         insert_sql_template=_SRA_RUN_INSERT,
     )
 
@@ -602,7 +609,7 @@ def geo_series_postgres() -> int:
         table="geo_series",
         ddl=_GEO_SERIES_DDL,
         indexes=_GEO_SERIES_INDEXES,
-        parquet_parts=("geo", "parquet", "geo_series.parquet"),
+        lake_table="geo_series",
         insert_sql_template=_GEO_SERIES_INSERT,
     )
 
@@ -613,7 +620,7 @@ def geo_sample_postgres() -> int:
         table="geo_sample",
         ddl=_GEO_SAMPLE_DDL,
         indexes=_GEO_SAMPLE_INDEXES,
-        parquet_parts=("geo", "parquet", "geo_samples.parquet"),
+        lake_table="geo_sample",
         insert_sql_template=_GEO_SAMPLE_INSERT,
     )
 
@@ -623,7 +630,7 @@ def geo_platform_postgres() -> int:
     return _load(
         table="geo_platform",
         ddl=_GEO_PLATFORM_DDL,
-        parquet_parts=("geo", "parquet", "geo_platforms.parquet"),
+        lake_table="geo_platform",
         insert_sql_template=_GEO_PLATFORM_INSERT,
     )
 
@@ -634,14 +641,14 @@ def pubmed_postgres() -> int:
         table="pubmed_article",
         ddl=_PUBMED_DDL,
         indexes=_PUBMED_INDEXES,
-        parquet_parts=("pubmed", "parquet", "pubmed_articles.parquet"),
+        lake_table="pubmed_article",
         insert_sql_template=_PUBMED_INSERT,
     )
 
 
 @flow(name="postgres-load")
 def postgres_load_flow() -> None:
-    """Reload every API-serving table from its consolidated parquet."""
+    """Reload every API-serving table from its DuckLake source table."""
     bioproject_postgres()
     biosample_postgres()
     sra_study_postgres()
