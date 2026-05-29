@@ -123,6 +123,22 @@ def run_consolidate() -> None:
     consolidate_flow()
 
 
+@run.command("ducklake-load")
+@click.option("--lake-schema", default=None, help="Override target lake schema.")
+def run_ducklake_load(lake_schema: str | None) -> None:
+    from omicidx.prefect.flows.ducklake import LAKE_SCHEMA
+    from omicidx.prefect.flows.ducklake_load import ducklake_load_flow
+
+    ducklake_load_flow(lake_schema=lake_schema or LAKE_SCHEMA)
+
+
+@run.command("ducklake-maintenance")
+def run_ducklake_maintenance() -> None:
+    from omicidx.prefect.flows.ducklake_load import ducklake_maintenance_flow
+
+    ducklake_maintenance_flow()
+
+
 @run.command("postgres")
 def run_postgres() -> None:
     from omicidx.prefect.flows.postgres import postgres_load_flow
