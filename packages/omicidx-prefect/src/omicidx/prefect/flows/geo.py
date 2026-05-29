@@ -28,7 +28,7 @@ from omicidx.prefect.semaphore import SemaphoreStore
 from upath import UPath
 
 from prefect import flow, get_run_logger, task
-from prefect.task_runners import ThreadPoolTaskRunner
+from prefect.task_runners import ProcessPoolTaskRunner
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -288,7 +288,7 @@ def _enumerate_months(start: str = "2005-01", end: str | None = None) -> list[st
 
 @flow(
     name="geo-extract",
-    task_runner=ThreadPoolTaskRunner(max_workers=2),
+    task_runner=ProcessPoolTaskRunner(max_workers=2),
 )
 def geo_extract_flow(
     start_month: str = "2005-01",

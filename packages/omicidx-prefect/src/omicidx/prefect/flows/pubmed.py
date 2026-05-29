@@ -20,7 +20,7 @@ from omicidx.prefect.semaphore import SemaphoreStore
 from upath import UPath
 
 from prefect import flow, get_run_logger, task
-from prefect.task_runners import ThreadPoolTaskRunner
+from prefect.task_runners import ProcessPoolTaskRunner
 
 PUBMED_BASE = UPath("https://ftp.ncbi.nlm.nih.gov/pubmed")
 _XML_GZ_RE = re.compile(r"^(pubmed\d+n\d+)\.xml\.gz$")
@@ -107,7 +107,7 @@ def extract_pubmed_file(key: str, url: str, force: bool = False) -> dict:
 
 @flow(
     name="pubmed-extract",
-    task_runner=ThreadPoolTaskRunner(max_workers=4),
+    task_runner=ProcessPoolTaskRunner(max_workers=12),
 )
 def pubmed_extract_flow(force: bool = False) -> None:
     """Extract every PubMed file whose semaphore is missing.
