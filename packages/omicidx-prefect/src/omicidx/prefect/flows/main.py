@@ -1,16 +1,21 @@
 """Top-level pipeline flows.
 
-`daily_pipeline_flow` mirrors the Dagster `daily_extract_schedule` plus
-the downstream cascade — it runs the raw extracts, then consolidation,
-then the postgres loads, then the duckdb build. Each step is a
-subflow, so failure of one stage halts the rest with full visibility.
+`daily_pipeline_flow` runs the raw extracts, then the DuckLake load
+(MERGE raw → lake.omicidx.*), then the postgres loads (which read from
+the lake), then the duckdb build. Each step is a subflow, so failure of
+one stage halts the rest with full visibility.
+
+The old `consolidate` step (raw → consolidated parquet) is replaced by
+`ducklake-load`. `consolidate.py` is retained for now only because the
+public duckdb-build SQL views still read published parquet; that build
+will be repointed to the lake separately.
 """
 
 from omicidx.prefect.flows.biosample import (
     bioproject_extract_flow,
     biosample_extract_flow,
 )
-from omicidx.prefect.flows.consolidate import consolidate_flow
+from omicidx.prefect.flows.ducklake_load import ducklake_load_flow
 from omicidx.prefect.flows.ebi_biosample import ebi_biosample_extract_flow
 from omicidx.prefect.flows.geo import geo_extract_flow, geo_rna_seq_counts_flow
 from omicidx.prefect.flows.postgres import postgres_load_flow
@@ -35,9 +40,9 @@ def raw_extract_flow(force: bool = False) -> None:
 
 @flow(name="daily-pipeline")
 def daily_pipeline_flow(force: bool = False) -> None:
-    """Daily end-to-end pipeline: extract → consolidate → load → build."""
+    """Daily end-to-end pipeline: extract → ducklake-load → postgres → build."""
     raw_extract_flow(force=force)
-    consolidate_flow()
+    ducklake_load_flow()
     postgres_load_flow()
     omicidx_duckdb_flow()
 

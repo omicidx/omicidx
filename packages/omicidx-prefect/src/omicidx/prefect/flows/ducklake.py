@@ -24,8 +24,8 @@ from omicidx.prefect.semaphore import SemaphoreStore
 from prefect import get_run_logger, task
 from prefect.runtime import flow_run
 
-# Development target. Promote to "omicidx" at cutover (P3).
-LAKE_SCHEMA = "omicidx_dev"
+# Production lake schema. (Was omicidx_dev during the transition.)
+LAKE_SCHEMA = "omicidx"
 
 
 def _commit_extra(**fields: object) -> str:
