@@ -65,7 +65,7 @@ services:
       S3_URL_STYLE: ${S3_URL_STYLE:-path}
       PUBLISH_ROOT: ${PUBLISH_ROOT:-s3://omicidx}
       # API-serving Postgres
-      POSTGRES_URI: ${POSTGRES_URI:-postgresql://omicidx@pg_duckdb_18:5432/omicidx}
+      POSTGRES_URI: ${POSTGRES_URI:-postgresql://omicidx@pg_main:5432/omicidx}
     command:
       - prefect
       - worker

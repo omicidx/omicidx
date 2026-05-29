@@ -42,7 +42,7 @@ docker compose -f docker-compose.dev.yml down
 **How it works:**
 - Container runs `dagster code-server start` which supports hot reload
 - Source directories are bind-mounted, so edits on host → immediate reload
-- Connects to `dagster_dagster` and `pg_and_duckdb_default` networks to integrate with existing Dagster daemon/webserver
+- Connects to `dagster_dagster` and `pg_main_stack_default` networks to integrate with existing Dagster daemon/webserver
 
 **Connecting to existing Dagster deployment:**
 
@@ -234,7 +234,7 @@ See `.env.example` for a complete template. Required variables:
 DAGSTER_POSTGRES_USER=dagster
 DAGSTER_POSTGRES_PASSWORD=your-password
 DAGSTER_POSTGRES_DB=dagster
-DAGSTER_POSTGRES_HOSTNAME=pg_duckdb_18  # or your postgres host
+DAGSTER_POSTGRES_HOSTNAME=pg_main  # or your postgres host
 DAGSTER_POSTGRES_PORT=5432
 ```
 
@@ -330,7 +330,7 @@ command:
 ```yaml
 networks:
   - dagster_dagster
-  - pg_and_duckdb_default
+  - pg_main_stack_default
 ```
 
 And that these networks exist:

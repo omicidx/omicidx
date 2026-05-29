@@ -7,9 +7,9 @@ services:
     restart: unless-stopped
     networks:
       - proxy
-      - pg_and_duckdb_default
+      - pg_main_stack_default
     environment:
-      OMICIDX_API_DATABASE_URL: ${POSTGRES_URI:-postgresql://omicidx@pg_duckdb_18:5432/omicidx}
+      OMICIDX_API_DATABASE_URL: ${POSTGRES_URI:-postgresql://omicidx@pg_main:5432/omicidx}
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.omicidx-api.rule=Host(`api-omicidx.cancerdatasci.org`)"
@@ -27,5 +27,5 @@ services:
 networks:
   proxy:
     external: true
-  pg_and_duckdb_default:
+  pg_main_stack_default:
     external: true
