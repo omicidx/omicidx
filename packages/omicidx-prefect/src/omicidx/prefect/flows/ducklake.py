@@ -21,7 +21,7 @@ import orjson
 from omicidx.prefect.config import get_duckdb_path, get_ducklake_connection
 from omicidx.prefect.semaphore import SemaphoreStore
 
-from prefect import flow, get_run_logger, task
+from prefect import get_run_logger, task
 from prefect.runtime import flow_run
 
 # Development target. Promote to "omicidx" at cutover (P3).
@@ -195,16 +195,3 @@ def ducklake_maintenance(expire_older_than: str = "now() - INTERVAL 30 DAY") -> 
         remaining = con.execute("SELECT count(*) FROM lake.snapshots()").fetchone()[0]
     log.info(f"Cleaned {len(deleted)} orphaned files; {remaining} snapshots remain")
     return {"files_deleted": len(deleted), "snapshots_remaining": remaining}
-
-
-# -- flow ----------------------------------------------------------------------
-
-
-@flow(name="ducklake-load")
-def ducklake_load_flow(lake_schema: str = LAKE_SCHEMA) -> None:
-    """POC: merge bioproject into the lake. Fan-out lands here in P2."""
-    bioproject_to_ducklake(lake_schema=lake_schema)
-
-
-if __name__ == "__main__":
-    ducklake_load_flow()
