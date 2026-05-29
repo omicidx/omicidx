@@ -19,6 +19,7 @@ via `get_duckdb_path`; nothing else is written into the lake bucket.
 import duckdb
 import orjson
 from omicidx.prefect.config import get_duckdb_path, get_ducklake_connection
+from omicidx.prefect.semaphore import SemaphoreStore
 
 from prefect import flow, get_run_logger, task
 from prefect.runtime import flow_run
@@ -30,6 +31,32 @@ LAKE_SCHEMA = "omicidx_dev"
 def _commit_extra(**fields: object) -> str:
     """JSON blob for a snapshot's commit_extra_info, tagged with run id."""
     return orjson.dumps({"prefect_run_id": flow_run.get_id(), **fields}).decode()
+
+
+class HighWaterMark:
+    """Track the highest raw-partition watermark merged into the lake.
+
+    Source-incremental entities (SRA is hive-partitioned by `date`/`stage`)
+    scope their MERGE source to partitions at or beyond the stored
+    watermark, then advance it after a successful merge. Reads are made
+    inclusive (`>=`) so same-day later stages are never skipped; the
+    `_row_hash` gate makes re-reading the boundary partition a no-op.
+
+    Backed by a semaphore file under namespace `ducklake/<entity>`
+    (key `latest`), so it lists/clears alongside the raw semaphores and
+    a backfill is just "clear the watermark, re-run".
+    """
+
+    def __init__(self, entity: str) -> None:
+        self._sem = SemaphoreStore(f"ducklake/{entity}")
+        self._key = "latest"
+
+    def get(self) -> str | None:
+        rec = self._sem.read(self._key)
+        return (rec or {}).get("metadata", {}).get("high_water")
+
+    def set(self, value: str, **extra: object) -> None:
+        self._sem.mark_done(self._key, metadata={"high_water": value, **extra})
 
 
 def merge_to_ducklake(
