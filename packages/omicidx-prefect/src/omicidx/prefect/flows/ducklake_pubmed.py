@@ -168,6 +168,10 @@ def pubmed_to_ducklake(lake_schema: str = LAKE_SCHEMA) -> dict:
             "operation": "delete_retracted",
         }).decode()
 
+        delete_set = (
+            f"SELECT DISTINCT trim(pmid) FROM read_parquet('{raw}') "
+            "WHERE delete IS TRUE"
+        )
         con.execute("BEGIN TRANSACTION")
         try:
             con.execute(
@@ -178,15 +182,11 @@ def pubmed_to_ducklake(lake_schema: str = LAKE_SCHEMA) -> dict:
                     delete_extra,
                 ],
             )
-            con.execute(f"""
-                DELETE FROM {fqn}
-                WHERE pmid IN (
-                    SELECT DISTINCT trim(pmid)
-                    FROM read_parquet('{raw}')
-                    WHERE delete IS TRUE
-                )
-            """)
-            deleted_count = con.execute("SELECT changes()").fetchone()[0]
+            # DuckDB has no changes(); count rows that will go before deleting.
+            deleted_count = con.execute(
+                f"SELECT count(*) FROM {fqn} WHERE pmid IN ({delete_set})"
+            ).fetchone()[0]
+            con.execute(f"DELETE FROM {fqn} WHERE pmid IN ({delete_set})")
             con.execute("COMMIT")
         except Exception:
             con.execute("ROLLBACK")
