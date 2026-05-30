@@ -15,14 +15,14 @@ services:
     container_name: omicidx-dagster-dev
     networks:
       - dagster_dagster
-      - pg_and_duckdb_default
+      - pg_main_stack_default
     environment:
       DAGSTER_CURRENT_IMAGE: omicidx-dagster-dev
       # PostgreSQL Configuration (required for run execution)
       DAGSTER_POSTGRES_USER: ${DAGSTER_POSTGRES_USER:-dagster}
       DAGSTER_POSTGRES_PASSWORD: ${DAGSTER_POSTGRES_PASSWORD}
       DAGSTER_POSTGRES_DB: ${DAGSTER_POSTGRES_DB:-dagster}
-      DAGSTER_POSTGRES_HOSTNAME: ${DAGSTER_POSTGRES_HOSTNAME:-pg_duckdb_18}
+      DAGSTER_POSTGRES_HOSTNAME: ${DAGSTER_POSTGRES_HOSTNAME:-pg_main}
       DAGSTER_POSTGRES_PORT: ${DAGSTER_POSTGRES_PORT:-5432}
       # R2/S3 Storage Configuration
       S3_ENDPOINT: ${S3_ENDPOINT}
@@ -33,7 +33,7 @@ services:
       # OmicIDX publish root (default to local for dev)
       PUBLISH_ROOT: ${PUBLISH_ROOT:-/tmp/omicidx-dev}
       # PostgreSQL for API serving (omicidx database)
-      POSTGRES_URI: ${POSTGRES_URI:-postgresql://omicidx@pg_duckdb_18:5432/omicidx}
+      POSTGRES_URI: ${POSTGRES_URI:-postgresql://omicidx@pg_main:5432/omicidx}
       # PubMed sensor timeout
       DAGSTER_SENSOR_GRPC_TIMEOUT: "300"
       # Enable debug logging
@@ -65,5 +65,5 @@ services:
 networks:
   dagster_dagster:
     external: true
-  pg_and_duckdb_default:
+  pg_main_stack_default:
     external: true

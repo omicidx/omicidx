@@ -1,0 +1,96 @@
+# Prefect deployment manifest for omicidx ETL.
+#
+# Apply with:
+#   prefect deploy --all
+#
+# Schedules mirror the Dagster setup:
+#   - daily-pipeline:           02:00 UTC (full extract → consolidate → load → build)
+#   - hourly-pubmed:            poll FTP for new PubMed files
+#   - hourly-sra-accessions:    check SRA_Accessions.tab ETag, reload if changed
+#   - geo-monthly-rerun:        re-extract current month at 06:00 UTC daily
+
+name: omicidx-prefect
+prefect-version: 3.0.0
+
+build: null
+
+push: null
+
+pull:
+  - prefect.deployments.steps.set_working_directory:
+      directory: /opt/prefect/omicidx
+
+deployments:
+  - name: daily-pipeline
+    description: |
+      Full daily ETL: raw extracts (semaphore-gated), consolidation,
+      postgres reload, duckdb build + upload.
+    entrypoint: src/omicidx/prefect/flows/main.py:daily_pipeline_flow
+    work_pool:
+      name: default
+      work_queue_name: default
+    schedules:
+      - cron: "0 2 * * *"
+        timezone: UTC
+        active: true
+    parameters:
+      force: false
+
+  - name: pubmed-extract
+    description: Poll PubMed FTP for new files, extract any missing partitions.
+    entrypoint: src/omicidx/prefect/flows/pubmed.py:pubmed_extract_flow
+    work_pool:
+      name: default
+      work_queue_name: default
+    schedules:
+      - interval: 3600
+        active: true
+
+  - name: sra-accessions-etag
+    description: |
+      Re-ingest SRA_Accessions.tab when its ETag changes. Runs the
+      consolidation flow's etag-gated task in isolation.
+    entrypoint: src/omicidx/prefect/flows/consolidate.py:consolidate_flow
+    work_pool:
+      name: default
+      work_queue_name: default
+    schedules:
+      - interval: 3600
+        active: false  # daily-pipeline covers this; enable for tighter polling
+
+  - name: geo-extract
+    description: |
+      Re-run the GEO monthly extractor (current month always re-fires;
+      historical months skipped if semaphore exists).
+    entrypoint: src/omicidx/prefect/flows/geo.py:geo_extract_flow
+    work_pool:
+      name: default
+      work_queue_name: default
+    schedules:
+      - cron: "0 6 * * *"
+        timezone: UTC
+        active: true
+    parameters:
+      rerun_current_month: true
+      force: false
+
+  - name: consolidate
+    description: Per-entity raw → parquet consolidation.
+    entrypoint: src/omicidx/prefect/flows/consolidate.py:consolidate_flow
+    work_pool:
+      name: default
+      work_queue_name: default
+
+  - name: postgres-load
+    description: Reload every API-serving table from its consolidated parquet.
+    entrypoint: src/omicidx/prefect/flows/postgres.py:postgres_load_flow
+    work_pool:
+      name: default
+      work_queue_name: default
+
+  - name: omicidx-duckdb-build
+    description: Build the published omicidx.duckdb file and upload to R2/S3.
+    entrypoint: src/omicidx/prefect/flows/sql.py:omicidx_duckdb_flow
+    work_pool:
+      name: default
+      work_queue_name: default

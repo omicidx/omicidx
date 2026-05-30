@@ -88,7 +88,7 @@ class PostgresResource(dg.ConfigurableResource):
     """Resource for PostgreSQL connectivity.
 
     Set POSTGRES_URI in the environment, e.g.:
-        postgresql://omicidx:secret@pg_duckdb_18:5432/omicidx
+        postgresql://omicidx:secret@pg_main:5432/omicidx
     """
 
     uri: str = dg.EnvVar("POSTGRES_URI")
