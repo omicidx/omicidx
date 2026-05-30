@@ -18,11 +18,6 @@ create or replace view src_geo_platforms as (
     from read_parquet('https://data-omicidx.cancerdatasci.org/geo/parquet/geo_platforms.parquet')
 );
 
-create or replace view src_sra_accessions as (
-    select *
-    from read_parquet('https://data-omicidx.cancerdatasci.org/sra/parquet/sra_accessions.parquet')
-);
-
 -----
 --
 -- SRA Views
