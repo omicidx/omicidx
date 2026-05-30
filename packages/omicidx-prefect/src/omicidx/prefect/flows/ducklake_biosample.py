@@ -69,28 +69,6 @@ SELECT * EXCLUDE (rn) FROM (
 ) WHERE rn = 1
 """
 
-_BIOSAMPLE_UPDATE_COLS = [
-    "submission_date",
-    "last_update",
-    "publication_date",
-    "access",
-    "id",
-    "id_recs",
-    "ids",
-    "sra_sample",
-    "dbgap",
-    "gsm",
-    "title",
-    "description",
-    "taxonomy_name",
-    "taxon_id",
-    "attribute_recs",
-    "attributes",
-    "model",
-    "_row_hash",
-]
-
-
 @task(retries=1, retry_delay_seconds=60)
 def biosample_to_ducklake(lake_schema: str = LAKE_SCHEMA) -> dict:
     """MERGE raw biosample JSONL → lake.<lake_schema>.biosample."""
@@ -105,7 +83,6 @@ def biosample_to_ducklake(lake_schema: str = LAKE_SCHEMA) -> dict:
             table="biosample",
             source_sql=source_sql,
             key="accession",
-            update_cols=_BIOSAMPLE_UPDATE_COLS,
             commit_message=f"ducklake-load: biosample → {lake_schema}",
             commit_extra_info=_commit_extra(entity="biosample", source=raw),
         )

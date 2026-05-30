@@ -107,29 +107,6 @@ SELECT * EXCLUDE (rn) FROM (
 ) WHERE rn = 1
 """
 
-_EBI_BIOSAMPLE_UPDATE_COLS = [
-    "name",
-    "domain",
-    "status",
-    "release",
-    "update",
-    "submitted",
-    "create",
-    "taxId",
-    "sraAccession",
-    "submittedVia",
-    "webinSubmissionAccountId",
-    "characteristics",
-    "externalReferences",
-    "relationships",
-    "publications",
-    "organization",
-    "contact",
-    "certificates",
-    "_row_hash",
-]
-
-
 @task(retries=1, retry_delay_seconds=60)
 def ebi_biosample_to_ducklake(lake_schema: str = LAKE_SCHEMA) -> dict:
     """MERGE raw ebi_biosample NDJSON → lake.<lake_schema>.ebi_biosample."""
@@ -144,7 +121,6 @@ def ebi_biosample_to_ducklake(lake_schema: str = LAKE_SCHEMA) -> dict:
             table="ebi_biosample",
             source_sql=source_sql,
             key="accession",
-            update_cols=_EBI_BIOSAMPLE_UPDATE_COLS,
             commit_message=f"ducklake-load: ebi_biosample → {lake_schema}",
             commit_extra_info=_commit_extra(entity="ebi_biosample", source=raw),
         )

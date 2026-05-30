@@ -6,15 +6,16 @@ content hash (`_row_hash`) gates UPDATEs so unchanged rows never rewrite
 a data file — DuckLake is copy-on-write, so an idempotent re-run writes
 no new files and only a trivial snapshot.
 
-This sits between `raw-extract` and `postgres-load`. During the
-transition it writes to a development schema (`omicidx_dev`) so the
-production `omicidx` schema stays clean until each entity is validated;
-flip `LAKE_SCHEMA` to `omicidx` at cutover.
+This sits between `raw-extract` and `postgres-load`. Loaders write to
+`LAKE_SCHEMA` (production `omicidx`); pass an explicit `lake_schema` to
+target a development schema (e.g. `omicidx_dev`) for validation.
 
 `cdsci-lake` (the catalog's data bucket) is ducklake-controlled
 exclusively. Raw inputs are read from PUBLISH_ROOT (a different bucket)
 via `get_duckdb_path`; nothing else is written into the lake bucket.
 """
+
+from contextlib import contextmanager
 
 import duckdb
 import orjson
@@ -47,8 +48,10 @@ class HighWaterMark:
     a backfill is just "clear the watermark, re-run".
     """
 
-    def __init__(self, entity: str) -> None:
-        self._sem = SemaphoreStore(f"ducklake/{entity}")
+    def __init__(self, entity: str, lake_schema: str = LAKE_SCHEMA) -> None:
+        # Scope by schema so a dev-schema run never advances the prod
+        # watermark (which would silently skip un-loaded prod partitions).
+        self._sem = SemaphoreStore(f"ducklake/{lake_schema}/{entity}")
         self._key = "latest"
 
     def get(self) -> str | None:
@@ -59,6 +62,36 @@ class HighWaterMark:
         self._sem.mark_done(self._key, metadata={"high_water": value, **extra})
 
 
+@contextmanager
+def _stamped_txn(
+    con: duckdb.DuckDBPyConnection,
+    author: str,
+    message: str,
+    extra_info: str | None,
+):
+    """Wrap DML in a transaction stamped with snapshot commit metadata.
+
+    The stamp MUST share a transaction with the DML — DuckLake clears it
+    on commit, so an auto-committed statement would lose it. A no-op DML
+    writes no snapshot, so the stamp simply doesn't land.
+    """
+    con.execute("BEGIN TRANSACTION")
+    try:
+        con.execute(
+            "CALL ducklake_set_commit_message('lake', ?, ?, extra_info := ?)",
+            [author, message, extra_info],
+        )
+        yield
+        con.execute("COMMIT")
+    except Exception:
+        con.execute("ROLLBACK")
+        raise
+
+
+def _src_columns(con: duckdb.DuckDBPyConnection, view: str = "_merge_src") -> list[str]:
+    return [row[0] for row in con.execute(f"DESCRIBE {view}").fetchall()]
+
+
 def merge_to_ducklake(
     con: duckdb.DuckDBPyConnection,
     *,
@@ -66,7 +99,6 @@ def merge_to_ducklake(
     table: str,
     source_sql: str,
     key: str,
-    update_cols: list[str],
     hash_col: str = "_row_hash",
     author: str = "prefect:ducklake-load",
     commit_message: str | None = None,
@@ -79,13 +111,10 @@ def merge_to_ducklake(
     Subsequent runs hash-gate UPDATEs and INSERT unmatched rows.
 
     The caller's `source_sql` MUST yield at most one row per `key`
-    (MERGE rejects multiple source matches) and include `key`,
-    `hash_col`, and every column in `update_cols`.
-
-    The MERGE commit is stamped with author/message/extra_info so
-    `SELECT * FROM lake.snapshots()` is self-documenting. The stamp must
-    share a transaction with the DML — DuckLake clears it on commit, so
-    auto-committed statements would lose it.
+    (MERGE rejects multiple source matches) and include `key` and
+    `hash_col`. The columns to UPDATE are derived from the source view
+    (every column except the join key), so the projection is the single
+    source of truth for the column set.
     """
     con.execute(f"CREATE SCHEMA IF NOT EXISTS lake.{schema}")
     con.execute(f"CREATE OR REPLACE TEMP VIEW _merge_src AS {source_sql}")
@@ -93,29 +122,48 @@ def merge_to_ducklake(
         f"CREATE TABLE IF NOT EXISTS lake.{schema}.{table} AS "
         "SELECT * FROM _merge_src WHERE false"
     )
-    # Quote identifiers so reserved-word columns (e.g. pubmed's
-    # "references") are valid in the UPDATE SET list.
+    # Update every non-key column. Quote identifiers so reserved-word
+    # columns (e.g. pubmed's "references") are valid in the SET list.
+    update_cols = [c for c in _src_columns(con) if c != key]
     set_clause = ", ".join(f'"{c}" = src."{c}"' for c in update_cols)
     message = commit_message or f"ducklake-load: merge {schema}.{table}"
-    con.execute("BEGIN TRANSACTION")
-    try:
-        con.execute(
-            "CALL ducklake_set_commit_message('lake', ?, ?, extra_info := ?)",
-            [author, message, commit_extra_info],
-        )
+    with _stamped_txn(con, author, message, commit_extra_info):
         con.execute(f"""
             MERGE INTO lake.{schema}.{table} tgt
-            USING _merge_src src ON tgt.{key} = src.{key}
-            WHEN MATCHED AND tgt.{hash_col} <> src.{hash_col}
+            USING _merge_src src ON tgt."{key}" = src."{key}"
+            WHEN MATCHED AND tgt."{hash_col}" <> src."{hash_col}"
                 THEN UPDATE SET {set_clause}
             WHEN NOT MATCHED THEN INSERT *
         """)
-        con.execute("COMMIT")
-    except Exception:
-        con.execute("ROLLBACK")
-        raise
     return con.execute(
         f"SELECT count(*) FROM lake.{schema}.{table}"
+    ).fetchone()[0]
+
+
+def replace_to_ducklake(
+    con: duckdb.DuckDBPyConnection,
+    *,
+    schema: str,
+    table: str,
+    source_sql: str,
+    author: str = "prefect:ducklake-load",
+    commit_message: str | None = None,
+    commit_extra_info: str | None = None,
+) -> int:
+    """Full-replace lake.<schema>.<table> with a derived query result.
+
+    For derived tables that are cheaper to rebuild than to merge
+    (sra_accessions, geo_series_with_rnaseq_counts, the linkage table).
+    Stamped like `merge_to_ducklake` so snapshots stay self-documenting.
+    """
+    con.execute(f"CREATE SCHEMA IF NOT EXISTS lake.{schema}")
+    message = commit_message or f"ducklake-load: replace {schema}.{table}"
+    with _stamped_txn(con, author, message, commit_extra_info):
+        con.execute(
+            f'CREATE OR REPLACE TABLE lake.{schema}."{table}" AS {source_sql}'
+        )
+    return con.execute(
+        f'SELECT count(*) FROM lake.{schema}."{table}"'
     ).fetchone()[0]
 
 
@@ -149,12 +197,6 @@ SELECT * EXCLUDE (rn) FROM (
 ) WHERE rn = 1
 """
 
-_BIOPROJECT_UPDATE_COLS = [
-    "title", "description", "name", "publications", "locus_tags",
-    "release_date", "data_types", "external_links", "_row_hash",
-]
-
-
 @task(retries=1, retry_delay_seconds=60)
 def bioproject_to_ducklake(lake_schema: str = LAKE_SCHEMA) -> dict:
     """MERGE raw bioproject JSONL → lake.<lake_schema>.bioproject."""
@@ -169,7 +211,6 @@ def bioproject_to_ducklake(lake_schema: str = LAKE_SCHEMA) -> dict:
             table="bioproject",
             source_sql=source_sql,
             key="accession",
-            update_cols=_BIOPROJECT_UPDATE_COLS,
             commit_message=f"ducklake-load: bioproject → {lake_schema}",
             commit_extra_info=_commit_extra(entity="bioproject", source=raw),
         )

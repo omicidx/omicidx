@@ -104,15 +104,6 @@ SELECT * EXCLUDE (rn) FROM (
 ) WHERE rn = 1
 """
 
-_GEO_SERIES_UPDATE_COLS = [
-    "title", "status", "submission_date", "last_update_date",
-    "subseries", "bioprojects", "sra_studies", "contact", "type",
-    "summary", "relation", "pubmed_id", "sample_id", "sample_taxid",
-    "sample_organism", "platform_id", "platform_taxid", "platform_organism",
-    "supplemental_files", "overall_design", "contributor", "_row_hash",
-]
-
-
 # ---------------------------------------------------------------------------
 # geo_sample  (source: raw hive-partitioned NDJSON via glob)
 # union_by_name=true for the same empty-partition reason as geo_series.
@@ -180,16 +171,6 @@ SELECT * EXCLUDE (rn) FROM (
 ) WHERE rn = 1
 """
 
-_GEO_SAMPLE_UPDATE_COLS = [
-    "title", "status", "submission_date", "last_update_date",
-    "type", "anchor", "contact", "description", "biosample",
-    "tag_count", "tag_length", "platform_id", "hyb_protocol",
-    "channel_count", "scan_protocol", "data_row_count", "library_source",
-    "sra_experiment", "data_processing", "supplemental_files",
-    "channels", "contributor", "_row_hash",
-]
-
-
 # ---------------------------------------------------------------------------
 # geo_platform  (source: raw hive-partitioned NDJSON via glob)
 # union_by_name=true for the same empty-partition reason as geo_series.
@@ -245,14 +226,6 @@ SELECT * EXCLUDE (rn) FROM (
 ) WHERE rn = 1
 """
 
-_GEO_PLATFORM_UPDATE_COLS = [
-    "title", "status", "submission_date", "last_update_date",
-    "contact", "organism", "sample_id", "series_id", "technology",
-    "description", "distribution", "manufacturer", "data_row_count",
-    "contributor", "relation", "manufacture_protocol", "_row_hash",
-]
-
-
 # ---------------------------------------------------------------------------
 # Shared merge helper (avoids repeating the log/return boilerplate)
 # ---------------------------------------------------------------------------
@@ -263,7 +236,6 @@ def _merge_geo(
     table: str,
     raw_path: str,
     source_template: str,
-    update_cols: list[str],
     lake_schema: str,
 ) -> dict:
     """Run one GEO entity MERGE and return a summary dict."""
@@ -277,7 +249,6 @@ def _merge_geo(
             table=table,
             source_sql=source_sql,
             key="accession",
-            update_cols=update_cols,
             commit_message=f"ducklake-load: {entity} → {lake_schema}",
             commit_extra_info=_commit_extra(entity=entity, source=raw_path),
         )
@@ -304,7 +275,6 @@ def geo_series_to_ducklake(lake_schema: str = LAKE_SCHEMA) -> dict:
         table="geo_series",
         raw_path=raw,
         source_template=_GEO_SERIES_SOURCE,
-        update_cols=_GEO_SERIES_UPDATE_COLS,
         lake_schema=lake_schema,
     )
 
@@ -323,7 +293,6 @@ def geo_sample_to_ducklake(lake_schema: str = LAKE_SCHEMA) -> dict:
         table="geo_sample",
         raw_path=raw,
         source_template=_GEO_SAMPLE_SOURCE,
-        update_cols=_GEO_SAMPLE_UPDATE_COLS,
         lake_schema=lake_schema,
     )
 
@@ -342,6 +311,5 @@ def geo_platform_to_ducklake(lake_schema: str = LAKE_SCHEMA) -> dict:
         table="geo_platform",
         raw_path=raw,
         source_template=_GEO_PLATFORM_SOURCE,
-        update_cols=_GEO_PLATFORM_UPDATE_COLS,
         lake_schema=lake_schema,
     )

@@ -70,12 +70,6 @@ QUALIFY row_number() OVER (
 ) = 1
 """
 
-_STUDY_UPDATE_COLS = [
-    "study_accession", "alias", "title", "description", "abstract",
-    "study_type", "center_name", "broker_name", "bioproject", "geo",
-    "identifiers", "attributes", "xrefs", "pubmed_ids", "_row_hash",
-]
-
 _SAMPLE_SOURCE = """
 SELECT
     trim(accession) AS accession,
@@ -97,11 +91,6 @@ QUALIFY row_number() OVER (
     PARTITION BY accession ORDER BY date DESC, stage DESC
 ) = 1
 """
-
-_SAMPLE_UPDATE_COLS = [
-    "alias", "title", "organism", "description", "taxon_id", "biosample",
-    "identifiers", "attributes", "xrefs", "_row_hash",
-]
 
 _EXPERIMENT_SOURCE = """
 SELECT
@@ -151,15 +140,6 @@ QUALIFY row_number() OVER (
 ) = 1
 """
 
-_EXPERIMENT_UPDATE_COLS = [
-    "experiment_accession", "alias", "title", "design", "center_name",
-    "study_accession", "sample_accession", "platform", "instrument_model",
-    "library_name", "library_construction_protocol", "library_layout",
-    "library_layout_length", "library_layout_sdev", "library_strategy",
-    "library_source", "library_selection", "spot_length", "nreads",
-    "identifiers", "attributes", "xrefs", "reads", "_row_hash",
-]
-
 _RUN_SOURCE = """
 SELECT
     trim(accession) AS accession,
@@ -180,18 +160,11 @@ QUALIFY row_number() OVER (
 ) = 1
 """
 
-_RUN_UPDATE_COLS = [
-    "alias", "experiment_accession", "title", "identifiers", "attributes",
-    "qualities", "_row_hash",
-]
-
-
 def _merge_sra(
     entity: str,
     table: str,
     raw_subdir: str,
     source_template: str,
-    update_cols: list[str],
     lake_schema: str,
     force: bool,
 ) -> dict:
@@ -204,7 +177,7 @@ def _merge_sra(
     """
     log = get_run_logger()
     raw = get_duckdb_path("sra", "raw", raw_subdir, "**", "*parquet")
-    hwm = HighWaterMark(entity)
+    hwm = HighWaterMark(entity, lake_schema)
     last = hwm.get()
 
     if last is not None and not force:
@@ -225,7 +198,6 @@ def _merge_sra(
             table=table,
             source_sql=source_sql,
             key="accession",
-            update_cols=update_cols,
             commit_message=f"ducklake-load: {entity} → {lake_schema}",
             commit_extra_info=_commit_extra(
                 entity=entity, source=raw, high_water_from=last
@@ -271,7 +243,6 @@ def sra_study_to_ducklake(
         table="sra_study",
         raw_subdir="study",
         source_template=_STUDY_SOURCE,
-        update_cols=_STUDY_UPDATE_COLS,
         lake_schema=lake_schema,
         force=force,
     )
@@ -287,7 +258,6 @@ def sra_sample_to_ducklake(
         table="sra_sample",
         raw_subdir="sample",
         source_template=_SAMPLE_SOURCE,
-        update_cols=_SAMPLE_UPDATE_COLS,
         lake_schema=lake_schema,
         force=force,
     )
@@ -303,7 +273,6 @@ def sra_experiment_to_ducklake(
         table="sra_experiment",
         raw_subdir="experiment",
         source_template=_EXPERIMENT_SOURCE,
-        update_cols=_EXPERIMENT_UPDATE_COLS,
         lake_schema=lake_schema,
         force=force,
     )
@@ -319,7 +288,6 @@ def sra_run_to_ducklake(
         table="sra_run",
         raw_subdir="run",
         source_template=_RUN_SOURCE,
-        update_cols=_RUN_UPDATE_COLS,
         lake_schema=lake_schema,
         force=force,
     )

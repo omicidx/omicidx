@@ -111,15 +111,6 @@ SELECT * EXCLUDE (rn) FROM (
 ) WHERE rn = 1
 """
 
-_PUBMED_UPDATE_COLS = [
-    "title", "issue", "pages", "abstract", "journal", "authors",
-    "pubdate", "mesh_terms", "publication_types", "chemical_list",
-    "keywords", "doi", "references", "languages", "vernacular_title",
-    "date_completed", "date_revised", "pmc", "other_id", "medline_ta",
-    "nlm_unique_id", "issn_linking", "country", "grant_ids", "_row_hash",
-]
-
-
 # ---------------------------------------------------------------------------
 # Task
 # ---------------------------------------------------------------------------
@@ -151,7 +142,6 @@ def pubmed_to_ducklake(lake_schema: str = LAKE_SCHEMA) -> dict:
             table=table,
             source_sql=source_sql,
             key="pmid",
-            update_cols=_PUBMED_UPDATE_COLS,
             commit_message=f"ducklake-load: {table} → {lake_schema}",
             commit_extra_info=_commit_extra(entity=table, source=raw),
         )

@@ -112,7 +112,7 @@ def sra_accessions_to_ducklake(lake_schema: str = LAKE_SCHEMA) -> dict:
         f"Full-replace lake.{lake_schema}.sra_accessions from {_SRA_ACCESSIONS_URL}"
     )
     with get_ducklake_connection() as con:
-        rows = _replace_table(
+        rows = replace_to_ducklake(
             con,
             schema=lake_schema,
             table="sra_accessions",
@@ -142,7 +142,7 @@ def geo_rnaseq_counts_to_ducklake(lake_schema: str = LAKE_SCHEMA) -> dict:
         f"Full-replace lake.{lake_schema}.geo_series_with_rnaseq_counts from {raw}"
     )
     with get_ducklake_connection() as con:
-        rows = _replace_table(
+        rows = replace_to_ducklake(
             con,
             schema=lake_schema,
             table="geo_series_with_rnaseq_counts",
