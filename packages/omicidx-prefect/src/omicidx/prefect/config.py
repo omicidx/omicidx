@@ -184,9 +184,7 @@ def _require_postgres_uri() -> str:
 
 
 def postgres_async_uri() -> str:
-    return _require_postgres_uri().replace(
-        "postgresql://", "postgresql+asyncpg://", 1
-    )
+    return _require_postgres_uri().replace("postgresql://", "postgresql+asyncpg://", 1)
 
 
 def _split_postgres_statements(sql: str) -> list[str]:

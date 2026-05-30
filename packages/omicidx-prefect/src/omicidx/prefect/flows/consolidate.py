@@ -106,9 +106,7 @@ def geo_samples_parquet() -> int:
 
 @task(retries=1, retry_delay_seconds=60)
 def geo_rnaseq_counts_parquet() -> int:
-    output = get_duckdb_path(
-        "geo", "parquet", "geo_series_with_rnaseq_counts.parquet"
-    )
+    output = get_duckdb_path("geo", "parquet", "geo_series_with_rnaseq_counts.parquet")
     input_path = get_duckdb_path("geo", "raw", "gse_with_rna_seq_counts.parquet")
     sql = f"""
         COPY (

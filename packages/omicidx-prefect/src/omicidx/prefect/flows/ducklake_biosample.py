@@ -69,6 +69,7 @@ SELECT * EXCLUDE (rn) FROM (
 ) WHERE rn = 1
 """
 
+
 @task(retries=1, retry_delay_seconds=60)
 def biosample_to_ducklake(lake_schema: str = LAKE_SCHEMA) -> dict:
     """MERGE raw biosample JSONL → lake.<lake_schema>.biosample."""

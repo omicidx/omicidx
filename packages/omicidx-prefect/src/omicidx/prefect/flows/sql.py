@@ -74,20 +74,16 @@ def build_omicidx_duckdb() -> dict:
             for (table,) in tables:
                 qualified = f"{schema}.{table}" if schema != "main" else table
                 try:
-                    count = con.execute(
-                        f"SELECT COUNT(*) FROM {qualified}"
-                    ).fetchone()[0]
+                    count = con.execute(f"SELECT COUNT(*) FROM {qualified}").fetchone()[
+                        0
+                    ]
                 except Exception:
                     count = -1
-                summaries.append(
-                    {"schema": schema, "table": table, "row_count": count}
-                )
+                summaries.append({"schema": schema, "table": table, "row_count": count})
 
         for s in summaries:
             qualified = (
-                f"{s['schema']}.{s['table']}"
-                if s["schema"] != "main"
-                else s["table"]
+                f"{s['schema']}.{s['table']}" if s["schema"] != "main" else s["table"]
             )
             log.info(f"  {qualified}: {s['row_count']:,} rows")
 

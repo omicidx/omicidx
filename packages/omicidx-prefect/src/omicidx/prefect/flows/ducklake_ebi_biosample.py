@@ -107,6 +107,7 @@ SELECT * EXCLUDE (rn) FROM (
 ) WHERE rn = 1
 """
 
+
 @task(retries=1, retry_delay_seconds=60)
 def ebi_biosample_to_ducklake(lake_schema: str = LAKE_SCHEMA) -> dict:
     """MERGE raw ebi_biosample NDJSON → lake.<lake_schema>.ebi_biosample."""

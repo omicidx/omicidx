@@ -156,9 +156,7 @@ def extract_ebi_biosample(key: str, force: bool = False) -> dict:
 
 def _enumerate_days(start: str = "2021-01-01", end: str | None = None) -> list[str]:
     start_d = datetime.strptime(start, "%Y-%m-%d").date()
-    end_d = (
-        datetime.strptime(end, "%Y-%m-%d").date() if end else date.today()
-    )
+    end_d = datetime.strptime(end, "%Y-%m-%d").date() if end else date.today()
     keys: list[str] = []
     cur = start_d
     while cur <= end_d:

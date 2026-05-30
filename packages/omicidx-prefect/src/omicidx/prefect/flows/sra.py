@@ -347,7 +347,9 @@ def get_mirror_listing() -> list[dict]:
     log = get_run_logger()
     entries = _get_mirror_entries()
     current = [e for e in entries if e["in_current_batch"]]
-    log.info(f"Found {len(entries)} total mirror entries, {len(current)} in current batch")
+    log.info(
+        f"Found {len(entries)} total mirror entries, {len(current)} in current batch"
+    )
     for entity in ENTITIES:
         n = sum(1 for e in current if e["entity"] == entity)
         log.info(f"  {entity}: {n} files")

@@ -160,6 +160,7 @@ QUALIFY row_number() OVER (
 ) = 1
 """
 
+
 def _merge_sra(
     entity: str,
     table: str,
@@ -234,9 +235,7 @@ def _max_raw_date(con: duckdb.DuckDBPyConnection, raw: str) -> object | None:
 
 
 @task(retries=1, retry_delay_seconds=60)
-def sra_study_to_ducklake(
-    lake_schema: str = LAKE_SCHEMA, force: bool = False
-) -> dict:
+def sra_study_to_ducklake(lake_schema: str = LAKE_SCHEMA, force: bool = False) -> dict:
     """MERGE raw SRA study partitions → lake.<lake_schema>.sra_study."""
     return _merge_sra(
         entity="sra_study",
@@ -249,9 +248,7 @@ def sra_study_to_ducklake(
 
 
 @task(retries=1, retry_delay_seconds=60)
-def sra_sample_to_ducklake(
-    lake_schema: str = LAKE_SCHEMA, force: bool = False
-) -> dict:
+def sra_sample_to_ducklake(lake_schema: str = LAKE_SCHEMA, force: bool = False) -> dict:
     """MERGE raw SRA sample partitions → lake.<lake_schema>.sra_sample."""
     return _merge_sra(
         entity="sra_sample",
@@ -279,9 +276,7 @@ def sra_experiment_to_ducklake(
 
 
 @task(retries=1, retry_delay_seconds=60)
-def sra_run_to_ducklake(
-    lake_schema: str = LAKE_SCHEMA, force: bool = False
-) -> dict:
+def sra_run_to_ducklake(lake_schema: str = LAKE_SCHEMA, force: bool = False) -> dict:
     """MERGE raw SRA run partitions → lake.<lake_schema>.sra_run."""
     return _merge_sra(
         entity="sra_run",
@@ -294,9 +289,7 @@ def sra_run_to_ducklake(
 
 
 @flow(name="ducklake-load-sra")
-def ducklake_load_sra_flow(
-    lake_schema: str = LAKE_SCHEMA, force: bool = False
-) -> None:
+def ducklake_load_sra_flow(lake_schema: str = LAKE_SCHEMA, force: bool = False) -> None:
     """Merge all four SRA entities into the lake (order unconstrained)."""
     sra_study_to_ducklake(lake_schema=lake_schema, force=force)
     sra_sample_to_ducklake(lake_schema=lake_schema, force=force)
