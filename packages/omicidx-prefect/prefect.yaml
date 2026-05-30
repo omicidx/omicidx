@@ -1,13 +1,16 @@
 # Prefect deployment manifest for omicidx ETL.
 #
-# Apply with:
-#   prefect deploy --all
+# Apply with (against the shared monode prefect-server):
+#   docker compose exec worker prefect deploy --all
 #
-# Schedules mirror the Dagster setup:
-#   - daily-pipeline:           02:00 UTC (full extract → consolidate → load → build)
-#   - hourly-pubmed:            poll FTP for new PubMed files
-#   - hourly-sra-accessions:    check SRA_Accessions.tab ETag, reload if changed
-#   - geo-monthly-rerun:        re-extract current month at 06:00 UTC daily
+# Pipeline shape (post-DuckLake-cutover):
+#   raw-extract -> ducklake-load -> postgres-load -> duckdb-build
+#
+# Schedules:
+#   - daily-pipeline:       02:00 UTC (full extract -> lake -> postgres -> build)
+#   - ducklake-maintenance: 04:00 UTC Sunday (expire snapshots + cleanup + compact)
+#   - pubmed-extract:       hourly (poll FTP for new PubMed files)
+#   - geo-extract:          06:00 UTC daily (re-fire current month)
 
 name: omicidx-prefect
 prefect-version: 3.0.0
@@ -23,8 +26,9 @@ pull:
 deployments:
   - name: daily-pipeline
     description: |
-      Full daily ETL: raw extracts (semaphore-gated), consolidation,
-      postgres reload, duckdb build + upload.
+      Full daily ETL: raw extracts (semaphore-gated) -> ducklake-load
+      (MERGE raw into lake.omicidx.*) -> postgres reload (reads the lake)
+      -> duckdb build + upload.
     entrypoint: src/omicidx/prefect/flows/main.py:daily_pipeline_flow
     work_pool:
       name: default
@@ -36,6 +40,29 @@ deployments:
     parameters:
       force: false
 
+  - name: ducklake-load
+    description: |
+      MERGE every entity's raw data into the DuckLake catalog
+      (lake.omicidx.*). Standalone entry point; also runs inside
+      daily-pipeline. Idempotent (hash-gated).
+    entrypoint: src/omicidx/prefect/flows/ducklake_load.py:ducklake_load_flow
+    work_pool:
+      name: default
+      work_queue_name: default
+
+  - name: ducklake-maintenance
+    description: |
+      Catalog maintenance: expire old snapshots, delete unreferenced
+      data files, and compact adjacent files. Weekly.
+    entrypoint: src/omicidx/prefect/flows/ducklake_load.py:ducklake_maintenance_flow
+    work_pool:
+      name: default
+      work_queue_name: default
+    schedules:
+      - cron: "0 4 * * 0"
+        timezone: UTC
+        active: true
+
   - name: pubmed-extract
     description: Poll PubMed FTP for new files, extract any missing partitions.
     entrypoint: src/omicidx/prefect/flows/pubmed.py:pubmed_extract_flow
@@ -45,18 +72,6 @@ deployments:
     schedules:
       - interval: 3600
         active: true
-
-  - name: sra-accessions-etag
-    description: |
-      Re-ingest SRA_Accessions.tab when its ETag changes. Runs the
-      consolidation flow's etag-gated task in isolation.
-    entrypoint: src/omicidx/prefect/flows/consolidate.py:consolidate_flow
-    work_pool:
-      name: default
-      work_queue_name: default
-    schedules:
-      - interval: 3600
-        active: false  # daily-pipeline covers this; enable for tighter polling
 
   - name: geo-extract
     description: |
@@ -74,15 +89,8 @@ deployments:
       rerun_current_month: true
       force: false
 
-  - name: consolidate
-    description: Per-entity raw → parquet consolidation.
-    entrypoint: src/omicidx/prefect/flows/consolidate.py:consolidate_flow
-    work_pool:
-      name: default
-      work_queue_name: default
-
   - name: postgres-load
-    description: Reload every API-serving table from its consolidated parquet.
+    description: Reload every API-serving table from its DuckLake source table.
     entrypoint: src/omicidx/prefect/flows/postgres.py:postgres_load_flow
     work_pool:
       name: default

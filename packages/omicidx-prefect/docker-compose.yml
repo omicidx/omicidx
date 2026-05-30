@@ -1,71 +1,48 @@
-# Self-hosted Prefect server + worker for omicidx ETL.
+# omicidx ETL Prefect worker.
 #
-# Bring up:
+# This is WORKER-ONLY. The Prefect server + UI + API is the shared
+# instance from monode infrastructure/compose/prefect (container
+# `prefect-server`, backed by pg_main). We do NOT run a second server.
+#
+# The worker joins the shared `pg_main_stack_default` network, which is
+# how it reaches both:
+#   - prefect-server:4200   (the orchestration API)
+#   - pg_main:5432          (the DuckLake catalog + serving Postgres)
+#
+# Bring up (after the shared prefect-server is running):
 #   docker compose up -d --build
 #
-# Apply deployments (one-time, after the server is healthy):
+# Register/refresh deployments (one-time, from any tailnet client or the
+# worker itself):
 #   docker compose exec worker prefect deploy --all
 #
-# UI is exposed at http://localhost:4200 (PREFECT_API_URL).
+# Secrets/config come from packages/omicidx-prefect/.env (gitignored).
 
 services:
-  prefect-db:
-    image: postgres:16
-    container_name: omicidx-prefect-db
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: prefect
-      POSTGRES_PASSWORD: ${PREFECT_DB_PASSWORD:-prefect}
-      POSTGRES_DB: prefect
-    volumes:
-      - prefect-db-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U prefect"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  prefect-server:
-    image: prefecthq/prefect:3-latest
-    container_name: omicidx-prefect-server
-    restart: unless-stopped
-    depends_on:
-      prefect-db:
-        condition: service_healthy
-    ports:
-      - "4200:4200"
-    environment:
-      PREFECT_SERVER_API_HOST: "0.0.0.0"
-      PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://prefect:${PREFECT_DB_PASSWORD:-prefect}@prefect-db:5432/prefect
-      PREFECT_UI_API_URL: http://localhost:4200/api
-    command: ["prefect", "server", "start", "--host", "0.0.0.0"]
-    healthcheck:
-      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('localhost', 4200), timeout=5)"]
-      interval: 30s
-      timeout: 10s
-      start_period: 30s
-      retries: 5
-
   worker:
     build:
       context: ../..
       dockerfile: packages/omicidx-prefect/Dockerfile
     container_name: omicidx-prefect-worker
     restart: unless-stopped
-    depends_on:
-      prefect-server:
-        condition: service_healthy
+    networks:
+      - pg_main_stack_default
     environment:
-      PREFECT_API_URL: http://prefect-server:4200/api
-      # R2/S3 storage
+      # Talk to the shared monode prefect-server over the shared network.
+      PREFECT_API_URL: ${PREFECT_API_URL:-http://prefect-server:4200/api}
+      # R2/S3 storage (raw inputs + published artifacts).
       S3_ENDPOINT: ${S3_ENDPOINT}
       S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID}
       S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
       S3_REGION: ${S3_REGION:-auto}
       S3_URL_STYLE: ${S3_URL_STYLE:-path}
       PUBLISH_ROOT: ${PUBLISH_ROOT:-s3://omicidx}
-      # API-serving Postgres
+      # API-serving Postgres (postgres-load target).
       POSTGRES_URI: ${POSTGRES_URI:-postgresql://omicidx@pg_main:5432/omicidx}
+      # DuckLake catalog (ducklake-load). Host pg_main resolves on the
+      # shared network; the catalog's stored data_path governs I/O.
+      DUCKLAKE_URI: ${DUCKLAKE_URI}
+      DUCKLAKE_DATA_PATH: ${DUCKLAKE_DATA_PATH}
     command:
       - prefect
       - worker
@@ -75,5 +52,6 @@ services:
       - --type
       - process
 
-volumes:
-  prefect-db-data:
+networks:
+  pg_main_stack_default:
+    external: true

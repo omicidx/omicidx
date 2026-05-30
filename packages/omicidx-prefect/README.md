@@ -73,7 +73,7 @@ packages/omicidx-prefect/
 ├── pyproject.toml
 ├── prefect.yaml             # deployments (schedules)
 ├── Dockerfile               # worker image
-├── docker-compose.yml       # prefect server + db + worker
+├── docker-compose.yml       # worker (joins shared monode prefect-server)
 ├── src/omicidx/prefect/
 │   ├── config.py            # Settings + storage / duckdb / postgres helpers
 │   ├── semaphore.py         # SemaphoreStore
