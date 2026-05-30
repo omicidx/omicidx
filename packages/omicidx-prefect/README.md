@@ -109,20 +109,32 @@ uv run omicidx-prefect semaphores list sra/study
 uv run omicidx-prefect semaphores show pubmed pubmed25n0001
 ```
 
-## Self-hosted Prefect
+## Prefect worker
+
+The Prefect server + UI + API is the **shared** instance from monode
+`infrastructure/compose/prefect` (container `prefect-server`, backed by
+pg_main, reached over the tailnet). This package ships a **worker only**:
+`docker-compose.yml` builds the omicidx worker image and joins the shared
+`pg_main_stack_default` network, which is how it reaches both
+`prefect-server:4200` (the API) and `pg_main:5432` (the DuckLake catalog
++ serving Postgres).
 
 ```bash
 cd packages/omicidx-prefect
 
-# .env supplies the same vars as the dagster package
+# .env supplies S3_*, PUBLISH_ROOT, POSTGRES_URI, DUCKLAKE_URI, DUCKLAKE_DATA_PATH
 cp .env.example .env  # (create one if you haven't)
 
+# build + start the worker (shared prefect-server must already be running)
 docker compose up -d --build
-# UI at http://localhost:4200
 
+# register/refresh deployments (schedules) on the shared server
 docker compose exec worker prefect deploy --all
 docker compose exec worker prefect deployment ls
 ```
+
+The pipeline is `raw-extract → ducklake-load → postgres-load →
+duckdb-build`; schedules live in `prefect.yaml`.
 
 ## Mapping from Dagster
 
