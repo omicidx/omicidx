@@ -135,9 +135,7 @@ def merge_to_ducklake(
                 THEN UPDATE SET {set_clause}
             WHEN NOT MATCHED THEN INSERT *
         """)
-    return con.execute(
-        f"SELECT count(*) FROM lake.{schema}.{table}"
-    ).fetchone()[0]
+    return con.execute(f"SELECT count(*) FROM lake.{schema}.{table}").fetchone()[0]
 
 
 def replace_to_ducklake(
@@ -159,12 +157,8 @@ def replace_to_ducklake(
     con.execute(f"CREATE SCHEMA IF NOT EXISTS lake.{schema}")
     message = commit_message or f"ducklake-load: replace {schema}.{table}"
     with _stamped_txn(con, author, message, commit_extra_info):
-        con.execute(
-            f'CREATE OR REPLACE TABLE lake.{schema}."{table}" AS {source_sql}'
-        )
-    return con.execute(
-        f'SELECT count(*) FROM lake.{schema}."{table}"'
-    ).fetchone()[0]
+        con.execute(f'CREATE OR REPLACE TABLE lake.{schema}."{table}" AS {source_sql}')
+    return con.execute(f'SELECT count(*) FROM lake.{schema}."{table}"').fetchone()[0]
 
 
 # -- bioproject (POC) ----------------------------------------------------------
@@ -196,6 +190,7 @@ SELECT * EXCLUDE (rn) FROM (
     WHERE accession IS NOT NULL AND trim(accession) <> ''
 ) WHERE rn = 1
 """
+
 
 @task(retries=1, retry_delay_seconds=60)
 def bioproject_to_ducklake(lake_schema: str = LAKE_SCHEMA) -> dict:
@@ -237,7 +232,9 @@ def ducklake_maintenance(
     """
     log = get_run_logger()
     with get_ducklake_connection() as con:
-        con.execute(f"CALL ducklake_expire_snapshots('lake', older_than => {expire_older_than})")
+        con.execute(
+            f"CALL ducklake_expire_snapshots('lake', older_than => {expire_older_than})"
+        )
         deleted = con.execute(
             "CALL ducklake_cleanup_old_files('lake', cleanup_all => true)"
         ).fetchall()

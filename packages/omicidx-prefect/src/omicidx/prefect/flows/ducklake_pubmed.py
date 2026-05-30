@@ -151,12 +151,14 @@ def pubmed_to_ducklake(lake_schema: str = LAKE_SCHEMA) -> dict:
         # PubMed signals article deletions via rows with delete=TRUE in raw.
         # These rows were excluded from the MERGE above; now remove any
         # previously loaded PMIDs that appear in the delete set.
-        delete_extra = orjson.dumps({
-            "prefect_run_id": flow_run.get_id(),
-            "entity": table,
-            "source": raw,
-            "operation": "delete_retracted",
-        }).decode()
+        delete_extra = orjson.dumps(
+            {
+                "prefect_run_id": flow_run.get_id(),
+                "entity": table,
+                "source": raw,
+                "operation": "delete_retracted",
+            }
+        ).decode()
 
         delete_set = (
             f"SELECT DISTINCT trim(pmid) FROM read_parquet('{raw}') "
