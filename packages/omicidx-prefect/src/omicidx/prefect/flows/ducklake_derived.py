@@ -2,9 +2,8 @@
 
 Unlike the incremental MERGE tasks in ducklake.py, these two entities are
 derived / pre-filtered views of external sources that are always recomputed
-from scratch.  A CREATE OR REPLACE TABLE inside a single transaction
-replaces the whole table atomically and stamps the snapshot with the same
-author/message pattern used by merge_to_ducklake.
+from scratch. `replace_to_ducklake` does a CREATE OR REPLACE TABLE inside a
+single stamped transaction.
 
 Tables produced
 ---------------
@@ -16,58 +15,18 @@ lake.<schema>.geo_series_with_rnaseq_counts
     Single-column accession list from the GEO RNA-seq counts parquet.
 """
 
-import duckdb
-import orjson
 from omicidx.prefect.config import get_duckdb_path, get_ducklake_connection
+from omicidx.prefect.flows.ducklake import (
+    LAKE_SCHEMA,
+    _commit_extra,
+    replace_to_ducklake,
+)
 
 from prefect import get_run_logger, task
-from prefect.runtime import flow_run
-
-# Production lake schema — matches LAKE_SCHEMA in ducklake.py.
-LAKE_SCHEMA = "omicidx"
 
 _SRA_ACCESSIONS_URL = (
     "https://ftp.ncbi.nlm.nih.gov/sra/reports/Metadata/SRA_Accessions.tab"
 )
-
-
-def _commit_extra(**fields: object) -> str:
-    """JSON blob for a snapshot's commit_extra_info, tagged with run id."""
-    return orjson.dumps({"prefect_run_id": flow_run.get_id(), **fields}).decode()
-
-
-def _replace_table(
-    con: duckdb.DuckDBPyConnection,
-    *,
-    schema: str,
-    table: str,
-    source_sql: str,
-    author: str = "prefect:ducklake-load",
-    commit_message: str,
-    commit_extra_info: str,
-) -> int:
-    """CREATE OR REPLACE TABLE lake.<schema>.<table> AS <source_sql>.
-
-    Runs inside a single transaction so the commit stamp (set via
-    ducklake_set_commit_message) is attached to the same snapshot that
-    the DML produces — DuckLake clears the stamp on COMMIT, so
-    auto-committed calls would lose it.
-
-    Returns the row count of the newly materialised table.
-    """
-    con.execute(f"CREATE SCHEMA IF NOT EXISTS lake.{schema}")
-    con.execute("BEGIN TRANSACTION")
-    try:
-        con.execute(
-            "CALL ducklake_set_commit_message('lake', ?, ?, extra_info := ?)",
-            [author, commit_message, commit_extra_info],
-        )
-        con.execute(f"CREATE OR REPLACE TABLE lake.{schema}.{table} AS {source_sql}")
-        con.execute("COMMIT")
-    except Exception:
-        con.execute("ROLLBACK")
-        raise
-    return con.execute(f"SELECT count(*) FROM lake.{schema}.{table}").fetchone()[0]
 
 
 # ---------------------------------------------------------------------------
@@ -117,7 +76,7 @@ def sra_accessions_to_ducklake(lake_schema: str = LAKE_SCHEMA) -> dict:
             schema=lake_schema,
             table="sra_accessions",
             source_sql=source_sql,
-            commit_message=f"ducklake-load: sra_accessions → {lake_schema}",
+            commit_message=f"ducklake-load: sra_accessions -> {lake_schema}",
             commit_extra_info=_commit_extra(
                 entity="sra_accessions",
                 source=_SRA_ACCESSIONS_URL,
@@ -148,7 +107,7 @@ def geo_rnaseq_counts_to_ducklake(lake_schema: str = LAKE_SCHEMA) -> dict:
             table="geo_series_with_rnaseq_counts",
             source_sql=source_sql,
             commit_message=(
-                f"ducklake-load: geo_series_with_rnaseq_counts → {lake_schema}"
+                f"ducklake-load: geo_series_with_rnaseq_counts -> {lake_schema}"
             ),
             commit_extra_info=_commit_extra(
                 entity="geo_series_with_rnaseq_counts",
