@@ -39,7 +39,9 @@ class Settings(BaseSettings):
     # Public Parquet export (reverse-ETL target; ADR-0004). The dedicated
     # public bucket, separate from PUBLISH_ROOT (raw) and cdsci-lake (lake).
     public_parquet_root: str | None = None  # e.g. r2://data-omicidx
-    public_parquet_https_base: str | None = None  # e.g. https://data-omicidx.cancerdatasci.org
+    public_parquet_https_base: str | None = (
+        None  # e.g. https://data-omicidx.cancerdatasci.org
+    )
 
     model_config = SettingsConfigDict(
         env_file=".env",

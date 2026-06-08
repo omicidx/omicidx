@@ -41,7 +41,9 @@ EXPORTS: list[tuple[str, str]] = [
 
 
 @task(retries=1, retry_delay_seconds=60)
-def export_table(lake_table: str, filename: str, lake_schema: str = LAKE_SCHEMA) -> dict:
+def export_table(
+    lake_table: str, filename: str, lake_schema: str = LAKE_SCHEMA
+) -> dict:
     """COPY lake.<schema>.<lake_table> → <public root>/latest/<filename>."""
     log = get_run_logger()
     output = get_public_parquet_path("latest", filename)
@@ -55,7 +57,11 @@ def export_table(lake_table: str, filename: str, lake_schema: str = LAKE_SCHEMA)
             f"SELECT count(*) FROM read_parquet('{output}')"
         ).fetchone()[0]
     log.info(f"Wrote {row_count:,} rows to {output}")
-    return {"table": f"{lake_schema}.{lake_table}", "file": filename, "row_count": row_count}
+    return {
+        "table": f"{lake_schema}.{lake_table}",
+        "file": filename,
+        "row_count": row_count,
+    }
 
 
 @flow(name="parquet-export")
