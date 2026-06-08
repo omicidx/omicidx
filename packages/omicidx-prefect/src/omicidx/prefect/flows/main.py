@@ -1,14 +1,17 @@
 """Top-level pipeline flows.
 
 `daily_pipeline_flow` runs the raw extracts, then the DuckLake load
-(MERGE raw → lake.omicidx.*), then the postgres loads (which read from
-the lake), then the duckdb build. Each step is a subflow, so failure of
-one stage halts the rest with full visibility.
+(MERGE raw → lake.omicidx.*), then the parquet export (lake → public
+Parquet, the reverse-ETL), then the postgres loads (which read the lake
+directly), then the duckdb build (which reads the exported Parquet). Each
+step is a subflow, so failure of one stage halts the rest with full
+visibility.
 
-The old `consolidate` step (raw → consolidated parquet) is replaced by
-`ducklake-load`. `consolidate.py` is retained for now only because the
-public duckdb-build SQL views still read published parquet; that build
-will be repointed to the lake separately.
+The old `consolidate` step (raw → consolidated parquet) is fully replaced
+by `ducklake-load` + `parquet-export`: the lake is the single source of
+truth, and `parquet-export` COPYs the merged tables out for public serving
+and the duckdb build. `consolidate.py` is dead once `parquet-export` is
+verified in prod.
 """
 
 from omicidx.prefect.flows.biosample import (
@@ -18,6 +21,7 @@ from omicidx.prefect.flows.biosample import (
 from omicidx.prefect.flows.ducklake_load import ducklake_load_flow
 from omicidx.prefect.flows.ebi_biosample import ebi_biosample_extract_flow
 from omicidx.prefect.flows.geo import geo_extract_flow, geo_rna_seq_counts_flow
+from omicidx.prefect.flows.parquet_export import parquet_export_flow
 from omicidx.prefect.flows.postgres import postgres_load_flow
 from omicidx.prefect.flows.pubmed import pubmed_extract_flow
 from omicidx.prefect.flows.sql import omicidx_duckdb_flow
@@ -40,9 +44,10 @@ def raw_extract_flow(force: bool = False) -> None:
 
 @flow(name="daily-pipeline")
 def daily_pipeline_flow(force: bool = False) -> None:
-    """Daily end-to-end pipeline: extract → ducklake-load → postgres → build."""
+    """Daily pipeline: extract → ducklake-load → parquet-export → postgres → build."""
     raw_extract_flow(force=force)
     ducklake_load_flow()
+    parquet_export_flow()
     postgres_load_flow()
     omicidx_duckdb_flow()
 

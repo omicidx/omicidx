@@ -36,6 +36,12 @@ class Settings(BaseSettings):
     postgres_uri: str | None = None
     ducklake_uri: str | None = None
     ducklake_data_path: str | None = None
+    # Public Parquet export (reverse-ETL target; ADR-0004). The dedicated
+    # public bucket, separate from PUBLISH_ROOT (raw) and cdsci-lake (lake).
+    public_parquet_root: str | None = None  # e.g. r2://data-omicidx
+    public_parquet_https_base: str | None = (
+        None  # e.g. https://data-omicidx.cancerdatasci.org
+    )
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -73,6 +79,22 @@ def get_upath(*parts: str) -> UPath:
 def get_duckdb_path(*parts: str) -> str:
     """Build an r2:// path for use in DuckDB SQL with the r2 secret."""
     upath = UPath(settings().publish_root, *parts)
+    return str(upath).replace("s3://", "r2://", 1)
+
+
+def get_public_parquet_path(*parts: str) -> str:
+    """Build an r2:// path under the public parquet root for DuckDB COPY.
+
+    The R2 secret created in `get_duckdb_connection()` is account-scoped
+    (no SCOPE), so a COPY to this bucket reuses it — no extra credentials.
+    """
+    root = settings().public_parquet_root
+    if not root:
+        raise RuntimeError("PUBLIC_PARQUET_ROOT is not set")
+    # UPath has no r2 filesystem; build with s3:// then emit r2:// for DuckDB
+    # (same trick as get_duckdb_path). Accepts an s3:// or r2:// root.
+    root_s3 = root.replace("r2://", "s3://", 1)
+    upath = UPath(root_s3, *parts)
     return str(upath).replace("s3://", "r2://", 1)
 
 

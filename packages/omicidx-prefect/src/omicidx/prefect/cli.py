@@ -139,6 +139,15 @@ def run_ducklake_maintenance() -> None:
     ducklake_maintenance_flow()
 
 
+@run.command("parquet-export")
+@click.option("--lake-schema", default=None, help="Override source lake schema.")
+def run_parquet_export(lake_schema: str | None) -> None:
+    from omicidx.prefect.flows.ducklake import LAKE_SCHEMA
+    from omicidx.prefect.flows.parquet_export import parquet_export_flow
+
+    parquet_export_flow(lake_schema=lake_schema or LAKE_SCHEMA)
+
+
 @run.command("postgres")
 def run_postgres() -> None:
     from omicidx.prefect.flows.postgres import postgres_load_flow
