@@ -1,7 +1,8 @@
 """DuckDB build flow.
 
-Builds the omicidx.duckdb file from consolidated parquet views
-(020-050 SQL) and uploads it to R2/S3.
+Builds the omicidx.duckdb file from the public Parquet snapshot produced by
+`parquet-export` (020-050 SQL views over `latest/*.parquet`) and uploads it
+to R2/S3. The view base URL is templated from PUBLIC_PARQUET_HTTPS_BASE.
 """
 
 import json
@@ -11,12 +12,16 @@ from pathlib import Path
 
 import duckdb
 import sqlglot
-from omicidx.prefect.config import get_duckdb_connection, get_upath
+from omicidx.prefect.config import get_duckdb_connection, get_upath, settings
 
 from prefect import flow, get_run_logger, task
 
 SQL_DIR = Path(__file__).parent.parent / "sql"
 DB_FILE = "omicidx.duckdb"
+# Placeholder in the view SQL for the public Parquet HTTPS base, so the
+# published views.sql carries a concrete URL that agrees with the export
+# write path (PUBLIC_PARQUET_ROOT). See sql/020_base_parquet_views.sql.
+PUBLIC_PARQUET_BASE_PLACEHOLDER = "{{PUBLIC_PARQUET_BASE}}"
 
 
 def _list_sql_files() -> list[str]:
@@ -28,7 +33,16 @@ def _get_sql(name: str) -> str:
     if not path.exists():
         available = ", ".join(_list_sql_files())
         raise FileNotFoundError(f"SQL file '{name}' not found. Available: {available}")
-    return path.read_text()
+    sql = path.read_text()
+    if PUBLIC_PARQUET_BASE_PLACEHOLDER in sql:
+        base = settings().public_parquet_https_base
+        if not base:
+            raise RuntimeError(
+                "PUBLIC_PARQUET_HTTPS_BASE is not set but "
+                f"{name} references {PUBLIC_PARQUET_BASE_PLACEHOLDER}"
+            )
+        sql = sql.replace(PUBLIC_PARQUET_BASE_PLACEHOLDER, base.rstrip("/"))
+    return sql
 
 
 def _run_sql_file(name: str, con: duckdb.DuckDBPyConnection) -> None:

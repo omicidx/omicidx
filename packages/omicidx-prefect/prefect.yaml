@@ -4,7 +4,7 @@
 #   docker compose exec worker prefect deploy --all
 #
 # Pipeline shape (post-DuckLake-cutover):
-#   raw-extract -> ducklake-load -> postgres-load -> duckdb-build
+#   raw-extract -> ducklake-load -> parquet-export -> postgres-load -> duckdb-build
 #
 # Schedules:
 #   - daily-pipeline:       02:00 UTC (full extract -> lake -> postgres -> build)
@@ -88,6 +88,16 @@ deployments:
     parameters:
       rerun_current_month: true
       force: false
+
+  - name: parquet-export
+    description: |
+      Reverse-ETL: COPY every core lake table out to the public Parquet
+      bucket (latest/*.parquet, ADR-0004). Source for duckdb-build + the
+      co-published views.sql. Standalone; also runs inside daily-pipeline.
+    entrypoint: src/omicidx/prefect/flows/parquet_export.py:parquet_export_flow
+    work_pool:
+      name: default
+      work_queue_name: default
 
   - name: postgres-load
     description: Reload every API-serving table from its DuckLake source table.

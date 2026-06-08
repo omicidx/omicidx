@@ -133,8 +133,9 @@ docker compose exec worker prefect deploy --all
 docker compose exec worker prefect deployment ls
 ```
 
-The pipeline is `raw-extract → ducklake-load → postgres-load →
-duckdb-build`; schedules live in `prefect.yaml`.
+The pipeline is `raw-extract → ducklake-load → parquet-export →
+postgres-load → duckdb-build`; schedules live in `prefect.yaml`.
+`parquet-export` is the reverse-ETL (lake → public Parquet, ADR-0004).
 
 ## Mapping from Dagster
 
@@ -165,6 +166,10 @@ S3_ENDPOINT=https://....r2.cloudflarestorage.com
 S3_REGION=auto
 S3_URL_STYLE=path
 POSTGRES_URI=postgresql://omicidx@host:5432/omicidx
+
+# Public Parquet export (reverse-ETL; ADR-0004)
+PUBLIC_PARQUET_ROOT=r2://data-omicidx                       # dedicated public bucket
+PUBLIC_PARQUET_HTTPS_BASE=https://data-omicidx.cancerdatasci.org  # base for views.sql URLs
 ```
 
 ## Tests

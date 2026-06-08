@@ -5,9 +5,8 @@ One task per entity. Each task loads a DuckLake table
 pattern) and atomically swaps a view to point at the new one. The API
 reads through the view, so reads never block during reload.
 
-Sources track the ducklake-load schema (LAKE_SCHEMA = omicidx_dev during
-the transition; flips to omicidx at cutover). `consolidate` remains as a
-fallback until this path is validated end-to-end.
+Sources track the ducklake-load schema (LAKE_SCHEMA = omicidx). Postgres
+reads the lake tables directly, independent of the public parquet export.
 """
 
 import asyncio

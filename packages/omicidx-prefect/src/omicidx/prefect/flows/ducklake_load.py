@@ -6,8 +6,8 @@ daily pipeline (wired in P3). Shared helpers live in `ducklake.py`; each
 entity's source projection + task lives in its own `ducklake_<entity>.py`
 module so they can evolve independently.
 
-Targets `LAKE_SCHEMA` (`omicidx_dev` during the transition; promote to
-`omicidx` at cutover).
+Targets `LAKE_SCHEMA` (`omicidx`; pass an explicit `lake_schema` to target
+a dev schema for validation).
 """
 
 from omicidx.prefect.flows.ducklake import (
