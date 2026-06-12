@@ -177,6 +177,7 @@ def consolidate_ebi_biosample_parquet() -> dict:
             FROM read_ndjson_auto(
                 '{input_glob}',
                 maximum_object_size = 1000000000,
+                union_by_name = true,
                 ignore_errors = false
             )
         ) TO '{output_path}' (FORMAT PARQUET, COMPRESSION ZSTD)
