@@ -37,6 +37,10 @@ services:
       S3_REGION: ${S3_REGION:-auto}
       S3_URL_STYLE: ${S3_URL_STYLE:-path}
       PUBLISH_ROOT: ${PUBLISH_ROOT:-s3://omicidx}
+      # Public Parquet target for parquet-export (reverse-ETL, latest/*.parquet)
+      # and the https base the duckdb-build views read from.
+      PUBLIC_PARQUET_ROOT: ${PUBLIC_PARQUET_ROOT}
+      PUBLIC_PARQUET_HTTPS_BASE: ${PUBLIC_PARQUET_HTTPS_BASE}
       # API-serving Postgres (postgres-load target).
       POSTGRES_URI: ${POSTGRES_URI:-postgresql://omicidx@pg_main:5432/omicidx}
       # DuckLake catalog (ducklake-load). Host pg_main resolves on the
