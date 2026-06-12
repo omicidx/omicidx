@@ -205,8 +205,16 @@ def ebi_biosample_extract_flow(
 ) -> None:
     days = _enumerate_days(start=start_day, end=end_day)
     current_key = date.today().isoformat()
+    sem = SemaphoreStore("ebi_biosample")
+    # Single LIST to skip already-done days, instead of one task run +
+    # HEAD per day. The current day always re-runs (it accrues during the
+    # day) when rerun_current_day is set.
+    always = [current_key] if rerun_current_day else []
+    todo = sem.pending_keys(days, always=always, force=force)
+    log = get_run_logger()
+    log.info(f"{len(todo)}/{len(days)} day partitions pending extraction")
     futures = []
-    for key in days:
+    for key in todo:
         force_this = force or (rerun_current_day and key == current_key)
         futures.append(extract_ebi_biosample.submit(key=key, force=force_this))
     for fut in futures:

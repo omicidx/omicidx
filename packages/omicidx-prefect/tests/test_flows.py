@@ -104,3 +104,29 @@ def test_semaphore_roundtrip(monkeypatch, tmp_path):
     assert store.clear("2024-09-13_Full") is True
     assert not store.exists("2024-09-13_Full")
     assert store.clear("2024-09-13_Full") is False
+
+
+def test_semaphore_pending_keys(monkeypatch, tmp_path):
+    """pending_keys filters out done partitions via a single list_keys()."""
+    monkeypatch.setenv("PUBLISH_ROOT", str(tmp_path))
+    monkeypatch.setenv("S3_ACCESS_KEY_ID", "x")
+    monkeypatch.setenv("S3_SECRET_ACCESS_KEY", "x")
+    monkeypatch.setenv("S3_ENDPOINT", "https://example.r2.cloudflarestorage.com")
+    monkeypatch.setenv("S3_REGION", "auto")
+    from omicidx.prefect import config
+
+    config.settings.cache_clear()
+
+    from omicidx.prefect.semaphore import SemaphoreStore
+
+    store = SemaphoreStore("geo")
+    store.mark_done("2005-01")
+    store.mark_done("2005-02")
+    candidates = ["2005-01", "2005-02", "2005-03"]
+
+    # done keys dropped, order preserved
+    assert store.pending_keys(candidates) == ["2005-03"]
+    # `always` re-includes a done key (mutable "latest")
+    assert store.pending_keys(candidates, always=["2005-02"]) == ["2005-02", "2005-03"]
+    # force keeps everything
+    assert store.pending_keys(candidates, force=True) == candidates

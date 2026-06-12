@@ -367,10 +367,20 @@ def sra_extract_flow(force: bool = False) -> None:
     under `_semaphores/sra/{entity}/{date}_{stage}.json`. Pass force=True
     to re-extract every partition regardless.
     """
+    log = get_run_logger()
     entries = get_mirror_listing()
+    # One LIST per entity namespace to drop already-done partitions, instead
+    # of one task run + HEAD per mirror file. No "always-latest": a new mirror
+    # batch gets new keys, so done == done.
+    done: dict[str, set[str]] = {}
+    if not force:
+        for entity in ENTITIES:
+            done[entity] = set(SemaphoreStore(f"sra/{entity}").list_keys())
     futures = []
     for entry in entries:
         key = _partition_key(entry)
+        if not force and key in done.get(entry["entity"], set()):
+            continue
         stage = "Full" if entry["is_full"] else "Incremental"
         futures.append(
             extract_mirror_file.submit(
@@ -382,6 +392,7 @@ def sra_extract_flow(force: bool = False) -> None:
                 force=force,
             )
         )
+    log.info(f"{len(futures)}/{len(entries)} mirror partitions pending extraction")
     for fut in futures:
         fut.result()
 
