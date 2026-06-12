@@ -108,9 +108,17 @@ def _q(value: str) -> str:
 
 
 def get_duckdb_connection(database: str = ":memory:") -> duckdb.DuckDBPyConnection:
-    """Create a DuckDB connection with the R2 secret pre-loaded."""
+    """Create a DuckDB connection with the R2 secret pre-loaded.
+
+    `allow_persistent_secrets=false` makes the connection ignore any
+    on-disk persistent secrets (e.g. a `pg_main` left by interactive
+    catalog bootstrap). The flow creates its own TEMPORARY r2/pg_main/lake
+    secrets; without this, a same-named persistent secret collides and the
+    DuckLake ATTACH fails with "Ambiguity detected for secret name
+    'pg_main', secret occurs in multiple storage backends."
+    """
     s = settings()
-    con = duckdb.connect(database)
+    con = duckdb.connect(database, config={"allow_persistent_secrets": "false"})
     con.execute("INSTALL httpfs; LOAD httpfs;")
     con.execute("SET http_retries = 8;")
     con.execute("SET http_retry_wait_ms = 1000;")
