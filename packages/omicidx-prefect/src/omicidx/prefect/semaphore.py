@@ -75,6 +75,27 @@ class SemaphoreStore:
             return []
         return sorted(p.stem for p in root.iterdir() if p.suffix == ".json")
 
+    def pending_keys(
+        self,
+        candidates,
+        *,
+        always=(),
+        force: bool = False,
+    ) -> list[str]:
+        """Filter `candidates` to the keys that still need work.
+
+        Replaces a per-partition `exists()` HEAD with a single `list_keys()`
+        LIST: enumerate the done set once, then keep any candidate that is
+        either not yet done or named in `always` (e.g. a mutable "latest"
+        partition that must re-run regardless). `force=True` keeps every
+        candidate. Order of `candidates` is preserved.
+        """
+        if force:
+            return list(candidates)
+        done = set(self.list_keys())
+        always = set(always)
+        return [k for k in candidates if k in always or k not in done]
+
     def clear_all(self) -> int:
         """Remove every semaphore in this namespace. Returns count removed."""
         keys = self.list_keys()

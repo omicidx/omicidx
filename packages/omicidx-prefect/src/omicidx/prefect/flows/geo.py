@@ -305,8 +305,16 @@ def geo_extract_flow(
     """
     months = _enumerate_months(start=start_month, end=end_month)
     current_key = _month_key(date.today())
+    sem = SemaphoreStore("geo")
+    # Single LIST to skip already-done months, instead of one task run +
+    # HEAD per month. The current month always re-runs (it accrues) when
+    # rerun_current_month is set.
+    always = [current_key] if rerun_current_month else []
+    todo = sem.pending_keys(months, always=always, force=force)
+    log = get_run_logger()
+    log.info(f"{len(todo)}/{len(months)} month partitions pending extraction")
     futures = []
-    for key in months:
+    for key in todo:
         force_this = force or (rerun_current_month and key == current_key)
         futures.append(extract_month.submit(key=key, force=force_this))
     for fut in futures:
