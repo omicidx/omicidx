@@ -7,7 +7,9 @@ injecting them as resource parameters.
 """
 
 import asyncio
+import os
 import re
+import tempfile
 from contextlib import contextmanager
 from functools import lru_cache
 from urllib.parse import urlparse
@@ -110,15 +112,26 @@ def _q(value: str) -> str:
 def get_duckdb_connection(database: str = ":memory:") -> duckdb.DuckDBPyConnection:
     """Create a DuckDB connection with the R2 secret pre-loaded.
 
-    `allow_persistent_secrets=false` makes the connection ignore any
-    on-disk persistent secrets (e.g. a `pg_main` left by interactive
-    catalog bootstrap). The flow creates its own TEMPORARY r2/pg_main/lake
-    secrets; without this, a same-named persistent secret collides and the
-    DuckLake ATTACH fails with "Ambiguity detected for secret name
-    'pg_main', secret occurs in multiple storage backends."
+    Point `secret_directory` at a dedicated, app-owned path instead of the
+    default `~/.duckdb/stored_secrets`. The flow only ever creates
+    TEMPORARY (in-memory) r2/pg_main/lake secrets, so this directory stays
+    empty — which sidesteps two failures caused by a stale persistent
+    `pg_main` secret left in the default store by interactive catalog
+    bootstrap:
+
+    - DuckLake ATTACH: "Ambiguity detected for secret name 'pg_main',
+      secret occurs in multiple storage backends" (temp + persistent).
+    - Postgres ATTACH: "Unknown secret storage found: 'local_file'" — the
+      postgres secret scan reads the persisted file's storage tag.
+
+    An isolated empty directory means neither stale file is ever seen, so
+    persistent secrets can stay enabled (disabling them is the wrong lever
+    — it still scans the file and throws the local_file error).
     """
     s = settings()
-    con = duckdb.connect(database, config={"allow_persistent_secrets": "false"})
+    secret_dir = os.path.join(tempfile.gettempdir(), "omicidx-duckdb-secrets")
+    os.makedirs(secret_dir, exist_ok=True)
+    con = duckdb.connect(database, config={"secret_directory": secret_dir})
     con.execute("INSTALL httpfs; LOAD httpfs;")
     con.execute("SET http_retries = 8;")
     con.execute("SET http_retry_wait_ms = 1000;")
