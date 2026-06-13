@@ -47,6 +47,10 @@ services:
       # shared network; the catalog's stored data_path governs I/O.
       DUCKLAKE_URI: ${DUCKLAKE_URI}
       DUCKLAKE_DATA_PATH: ${DUCKLAKE_DATA_PATH}
+      # DuckDB per-connection caps + parallel postgres-load fan-out.
+      DUCKDB_MEMORY_LIMIT: ${DUCKDB_MEMORY_LIMIT}
+      DUCKDB_THREADS: ${DUCKDB_THREADS}
+      POSTGRES_LOAD_CONCURRENCY: ${POSTGRES_LOAD_CONCURRENCY:-4}
     command:
       - prefect
       - worker
