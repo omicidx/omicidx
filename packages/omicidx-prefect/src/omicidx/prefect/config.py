@@ -44,6 +44,15 @@ class Settings(BaseSettings):
     public_parquet_https_base: str | None = (
         None  # e.g. https://data-omicidx.cancerdatasci.org
     )
+    # DuckDB per-connection resource caps. Important when several
+    # connections run concurrently (e.g. parallel postgres-load): leave
+    # unset and each connection grabs most of RAM / all cores, so N in
+    # parallel oversubscribe and OOM. Set memory_limit ~= RAM/concurrency
+    # and threads ~= cores/concurrency.
+    duckdb_memory_limit: str | None = None  # e.g. "32GB"
+    duckdb_threads: int | None = None  # e.g. 16
+    # Parallelism for postgres-load (independent per-entity table loads).
+    postgres_load_concurrency: int = 4
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -132,6 +141,10 @@ def get_duckdb_connection(database: str = ":memory:") -> duckdb.DuckDBPyConnecti
     secret_dir = os.path.join(tempfile.gettempdir(), "omicidx-duckdb-secrets")
     os.makedirs(secret_dir, exist_ok=True)
     con = duckdb.connect(database, config={"secret_directory": secret_dir})
+    if s.duckdb_memory_limit:
+        con.execute(f"SET memory_limit = '{_q(s.duckdb_memory_limit)}';")
+    if s.duckdb_threads:
+        con.execute(f"SET threads = {int(s.duckdb_threads)};")
     con.execute("INSTALL httpfs; LOAD httpfs;")
     con.execute("SET http_retries = 8;")
     con.execute("SET http_retry_wait_ms = 1000;")

@@ -10,6 +10,7 @@ reads the lake tables directly, independent of the public parquet export.
 """
 
 import asyncio
+import os
 import re
 
 from omicidx.prefect.config import (
@@ -23,6 +24,13 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from prefect import flow, get_run_logger, task
+from prefect.task_runners import ThreadPoolTaskRunner
+
+# Read at import (avoids triggering full Settings validation here); mirrors
+# Settings.postgres_load_concurrency default. Bounds how many independent
+# per-entity loads run at once — pair with duckdb_memory_limit/threads so
+# concurrent DuckDB connections don't oversubscribe RAM/cores.
+_PG_CONCURRENCY = int(os.getenv("POSTGRES_LOAD_CONCURRENCY", "4"))
 
 
 def _validate_sql_identifier(name: str) -> str:
@@ -645,19 +653,33 @@ def pubmed_postgres() -> int:
     )
 
 
-@flow(name="postgres-load")
+@flow(name="postgres-load", task_runner=ThreadPoolTaskRunner(max_workers=_PG_CONCURRENCY))
 def postgres_load_flow() -> None:
-    """Reload every API-serving table from its DuckLake source table."""
-    bioproject_postgres()
-    biosample_postgres()
-    sra_study_postgres()
-    sra_sample_postgres()
-    sra_experiment_postgres()
-    sra_run_postgres()
-    geo_series_postgres()
-    geo_sample_postgres()
-    geo_platform_postgres()
-    pubmed_postgres()
+    """Reload every API-serving table from its DuckLake source table.
+
+    The 10 per-entity loads are independent (separate tables, A/B slots and
+    views), so they run concurrently bounded by POSTGRES_LOAD_CONCURRENCY.
+    Tasks are submitted largest-table-first (LPT) to minimise makespan: the
+    longest poles start immediately and smaller loads backfill freed slots.
+    DuckDB memory_limit/threads (config) keep concurrent connections from
+    oversubscribing the box.
+    """
+    # Largest → smallest by approximate row count (LPT scheduling).
+    loads = [
+        biosample_postgres,
+        sra_run_postgres,
+        sra_experiment_postgres,
+        pubmed_postgres,
+        sra_sample_postgres,
+        geo_sample_postgres,
+        bioproject_postgres,
+        sra_study_postgres,
+        geo_series_postgres,
+        geo_platform_postgres,
+    ]
+    futures = [t.submit() for t in loads]
+    for f in futures:
+        f.result()  # re-raise any task failure
 
 
 if __name__ == "__main__":
